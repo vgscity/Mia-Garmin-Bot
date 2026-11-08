@@ -1,6 +1,6 @@
 # Người dùng Mia: chủ bot (OWNER_ID) + người nhà đeo Garmin, mỗi người token Garmin riêng,
-# cách xưng hô riêng, giờ nhận tin sáng/tối riêng. Người lạ nhắn /start thì vào hàng chờ,
-# chủ bot duyệt bằng nút trong Telegram. Bảng mia_nguoi nằm cùng Turso với garmin_kv (kho.py).
+# cách xưng hô riêng, giờ nhận tin sáng/tối riêng. Ai nhắn /start cũng dùng được ngay (chủ bot nhận
+# một dòng báo kèm nút Chặn); đặt DUYET_TAY=1 thì người mới vào hàng chờ, chủ bấm Duyệt/Không. Bảng mia_nguoi nằm cùng Turso với garmin_kv (kho.py).
 #
 # Mỗi người tự bật thêm trong Mini App: tin buổi sáng (thời sự / công nghệ), thực đơn 10h theo
 # hồ sơ của mình (giới tính, cao, cân mục tiêu, có ăn sáng không, thích/kiêng), và theo dõi cân
@@ -48,6 +48,11 @@ HO_SO_LOI = ""  # lý do CHU_HO_SO không đọc được (hiện ở cron ?dry=
 
 def chu() -> str:
     return os.environ["OWNER_ID"]
+
+
+def duyet_tay() -> bool:
+    """DUYET_TAY=1: người mới phải chờ chủ duyệt; mặc định ai vào cũng dùng được ngay."""
+    return os.environ.get("DUYET_TAY", "").strip() in ("1", "true", "yes")
 
 
 def ten_chu() -> str:
@@ -171,7 +176,7 @@ def dang_ky(id_, ten: str) -> tuple[dict, bool]:
         return lay(id_), False
     la_chu_ = la_chu(id_)
     c = _chu()
-    trang_thai = "duyet" if la_chu_ else "cho"
+    trang_thai = "duyet" if la_chu_ or not duyet_tay() else "cho"
     goi, xung = (c["goi"], c["xung"]) if la_chu_ else ("bạn", "mình")
     kho._turso(
         "INSERT OR IGNORE INTO mia_nguoi (id, ten, goi, xung, trang_thai, co_garmin) VALUES (?, ?, ?, ?, ?, ?)",
@@ -215,13 +220,17 @@ def ten_cua(u: dict) -> str:
 
 
 def bao_ba_duyet(u: dict) -> None:
+    """Báo chủ bot có người mới: chờ duyệt (DUYET_TAY) thì kèm nút Duyệt/Không, còn không thì chỉ báo + nút Chặn."""
     ten = ten_cua(u) + (f" (@{u['username']})" if u.get("username") else "")
     c = lay(chu()) or _chu()
-    telegram.goi(
-        "sendMessage", chat_id=chu(),
-        text=f"👤 {ten} muốn dùng Mia (id {u['id']}). {hoa(c['goi'])} duyệt không?",
-        reply_markup={"inline_keyboard": [[
-            {"text": "✅ Duyệt", "callback_data": f"duyet:{u['id']}"},
-            {"text": "❌ Không", "callback_data": f"chan:{u['id']}"},
-        ]]},
-    )
+    if duyet_tay():
+        text = f"👤 {ten} muốn dùng Mia (id {u['id']}). {hoa(c['goi'])} duyệt không?"
+        nut = [{"text": "✅ Duyệt", "callback_data": f"duyet:{u['id']}"},
+               {"text": "❌ Không", "callback_data": f"chan:{u['id']}"}]
+    else:
+        text = f"👤 {ten} vừa vào dùng Mia (id {u['id']})."
+        nut = [{"text": "🚫 Chặn người này", "callback_data": f"chan:{u['id']}"}]
+    try:
+        telegram.goi("sendMessage", chat_id=chu(), text=text, reply_markup={"inline_keyboard": [nut]})
+    except Exception as e:  # báo cho chủ lỗi thì người mới vẫn dùng được
+        print(f"Không báo được chủ bot: {type(e).__name__}: {e}")

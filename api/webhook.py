@@ -1,6 +1,6 @@
 # Webhook Telegram. Chủ bot (OWNER_ID) dùng đủ lệnh; người nhà được chủ duyệt dùng /ngu, /tongket,
-# /thoisu, /xahoi, /tin, /thucdon (khi đã bật trong Mia), /can, /caidat (mở Mini App). Người lạ /start → vào hàng
-# chờ, chủ bấm Duyệt/Không ngay trong tin Mia gửi.
+# /thoisu, /xahoi, /tin, /thucdon (khi đã bật trong Mia), /can, /caidat (mở Mini App). Người mới /start → dùng ngay,
+# chủ nhận một dòng báo kèm nút Chặn (DUYET_TAY=1 thì vào hàng chờ, chủ bấm Duyệt/Không).
 # Lệnh: /ngu = báo giấc ngủ đêm qua, /ngu hqua = đêm trước nữa, /thoisu = tin thời sự, /xahoi = xã hội · văn hoá · thể thao, /tin = tin công nghệ,
 # /tongket = tổng kết vận động + nhịp tim hôm nay, /thucdon = thực đơn hôm nay,
 # /can 75.2 = ghi cân (/can: xem tiến độ, /can xoa: xoá số hôm nay),
@@ -108,8 +108,13 @@ class handler(BaseHTTPRequestHandler):
             p, moi = nguoi.dang_ky(chat_id, ten_cua(u))
             if moi:
                 bao_ba_duyet({**u, "id": chat_id})
-            telegram.gui(chat_id, "Chào bạn 👋 Mình là Mia, trợ lý đọc giấc ngủ và vận động từ đồng hồ Garmin.\n"
-                                  f"Mia đã báo {nguoi.ten_chu()} duyệt, xong Mia nhắn lại liền nha.")
+            if p["trang_thai"] == "duyet":
+                telegram.goi("sendMessage", chat_id=chat_id, reply_markup=NUT_MIA, text=(
+                    "Chào bạn 👋 Mình là Mia, trợ lý đọc giấc ngủ và vận động từ đồng hồ Garmin.\n"
+                    "Bấm “Mở Mia” để chọn cách Mia gọi bạn, giờ nhận tin và kết nối Garmin nha 👇"))
+            else:
+                telegram.gui(chat_id, "Chào bạn 👋 Mình là Mia, trợ lý đọc giấc ngủ và vận động từ đồng hồ Garmin.\n"
+                                      f"Mia đã báo {nguoi.ten_chu()} duyệt, xong Mia nhắn lại liền nha.")
             return
         if not p or p["trang_thai"] == "chan":
             return

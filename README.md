@@ -6,7 +6,7 @@ tự chọn cách Mia gọi mình (ba, mẹ, ông, bà, anh, chị…), giờ nh
 thực đơn 10h theo hồ sơ của mình, theo dõi cân nặng. Cài đặt qua Mini App ngay trong Telegram.
 
 Trang giới thiệu: https://alexvgs.tech/mia · Bot đang chạy: [@miamyworld_bot](https://t.me/miamyworld_bot)
-(chỉ cho gia đình và người quen của tác giả; muốn dùng thì tự dựng theo hướng dẫn dưới).
+(ai có Garmin cũng dùng được; muốn bản riêng thì tự dựng theo hướng dẫn dưới).
 
 > Mia dùng dữ liệu từ đồng hồ Garmin qua tài khoản Garmin Connect của bạn, thông qua thư viện
 > không chính thức [python-garminconnect](https://github.com/cyberjunky/python-garminconnect).
@@ -26,7 +26,8 @@ Trang giới thiệu: https://alexvgs.tech/mia · Bot đang chạy: [@miamyworld
   `/can xoa`), `/caidat` (mở Mini App).
 
 Riêng tư: mỗi người chỉ thấy số liệu của mình. Mật khẩu Garmin chỉ dùng một lần để lấy token đọc,
-không lưu. Người lạ nhắn `/start` thì vào hàng chờ, chủ bot bấm Duyệt / Không ngay trong Telegram.
+không lưu. Ai nhắn `/start` cũng dùng được ngay; chủ bot nhận một dòng báo kèm nút Chặn. Muốn duyệt
+từng người thì đặt `DUYET_TAY=1`.
 
 ## Cấu trúc
 

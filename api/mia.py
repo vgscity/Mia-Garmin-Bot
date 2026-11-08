@@ -1,6 +1,6 @@
 # API cho Mini App Mia (08/11/2026). POST JSON {initData, hd, ...}; người gọi xác thực bằng chữ ký
 # initData của Telegram (HMAC theo BOT_TOKEN), không tin id gửi lên.
-#   hd=toi      → thông tin của mình (chưa có thì vào hàng chờ + báo chủ bot duyệt)
+#   hd=toi      → thông tin của mình (chưa có thì đăng ký; tự duyệt trừ khi DUYET_TAY=1)
 #   hd=luu      → goi, xung, gio_sang, gio_toi (+ từ 08/11 đợt 2: tin_thoi_su, tin_xa_hoi, tin_cong_nghe, thuc_don,
 #                 gioi_tinh, cao_cm, muc_tieu_kg, an_sang, an_uong — thiếu trường nào thì giữ nguyên)
 #   hd=can      → kg: ghi cân hôm nay; hd=can_xem → sổ cân + tiến độ; hd=can_xoa → xoá số hôm nay
@@ -108,7 +108,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             if hd == "toi":
                 p, moi = nguoi.dang_ky(id_, ten_cua(u))
-                if moi and p["trang_thai"] == "cho":
+                if moi and not nguoi.la_chu(id_):
                     bao_ba_duyet(u)
                 return self._json(200, self._cong_khai(p))
 
