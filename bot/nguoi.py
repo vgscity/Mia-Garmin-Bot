@@ -41,6 +41,7 @@ HO_SO_MAC_DINH = {"tin_thoi_su": 1, "tin_cong_nghe": 0, "thuc_don": 0, "gioi_tin
 HO_SO_THEM = ("kcal_min", "kcal_max", "dam_min", "dam_uu_tien")
 
 _da_nang_cap = False
+HO_SO_LOI = ""  # lý do CHU_HO_SO không đọc được (hiện ở cron ?dry=1 để dò cấu hình)
 
 
 def chu() -> str:
@@ -54,10 +55,13 @@ def ten_chu() -> str:
 
 def ho_so_chu() -> dict:
     """Hồ sơ chủ bot từ CHU_HO_SO (JSON), thiếu gì lấy mặc định; JSON hỏng thì coi như không có."""
+    global HO_SO_LOI
     try:
         them = json.loads(os.environ.get("CHU_HO_SO") or "{}")
-    except ValueError:
+        HO_SO_LOI = ""
+    except ValueError as e:
         them = {}
+        HO_SO_LOI = f"CHU_HO_SO không phải JSON: {e}"
     ho_so = {**HO_SO_MAC_DINH}
     for k in HO_SO_MAC_DINH:
         if k in them and them[k] is not None:

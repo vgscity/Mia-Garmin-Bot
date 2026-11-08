@@ -109,7 +109,9 @@ class handler(BaseHTTPRequestHandler):
     def _trua(self, dry: bool):
         ds = [p for p in nguoi.tat_ca_duyet() if p.get("thuc_don")]
         if not ds:
-            return self._tra(200, "trưa: không ai bật thực đơn")
+            c = nguoi.lay(nguoi.chu()) or nguoi._chu()
+            return self._tra(200, f"trưa: không ai bật thực đơn (chủ bot thuc_don={c.get('thuc_don')}, "
+                                  f"gioi_tinh='{c.get('gioi_tinh')}'; {nguoi.HO_SO_LOI or 'CHU_HO_SO đọc được'})")
         with ThreadPoolExecutor(max_workers=3) as pool:
             kq = list(pool.map(lambda p: trua_cho(p, dry), ds))
         loi = any(l for _, l in kq)
