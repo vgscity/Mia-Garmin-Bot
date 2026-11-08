@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mia</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --nen: var(--tg-theme-secondary-bg-color, #f2f2f7);
+    --the: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #fff));
+    --chu: var(--tg-theme-text-color, #111);
+    --mo: var(--tg-theme-hint-color, #8a8a8e);
+    --nhan: var(--tg-theme-button-color, #e05a8a);
+    --chu-nut: var(--tg-theme-button-text-color, #fff);
+    --do: var(--tg-theme-destructive-text-color, #e5484d);
+    --vien: color-mix(in srgb, var(--chu) 10%, transparent);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--nen); color: var(--chu);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 16px 16px 40px; display: grid; gap: 14px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 4px 4px 0; }
+  .logo { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 24px;
+    background: linear-gradient(135deg, #f6a5c0, #b18cf2); }
+  h1 { font-size: 20px; margin: 0; }
+  .phu { color: var(--mo); font-size: 13px; margin: 0; }
+  section { background: var(--the); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--mo); margin: 0; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--vien); background: transparent; color: var(--chu); border-radius: 999px;
+    padding: 7px 14px; font: inherit; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--nhan); border-color: var(--nhan); color: var(--chu-nut); }
+  .hang { display: flex; align-items: center; gap: 10px; }
+  .hang > label { flex: 1; }
+  input, select { width: 100%; font: inherit; color: var(--chu); background: var(--nen); border: 1px solid var(--vien);
+    border-radius: 10px; padding: 10px 12px; }
+  select { width: auto; min-width: 96px; }
+  button.nut { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 12px; cursor: pointer;
+    background: var(--nhan); color: var(--chu-nut); }
+  button.phu-nut { background: transparent; color: var(--nhan); border: 1px solid var(--vien); }
+  button.xoa { background: transparent; color: var(--do); border: 1px solid var(--vien); }
+  button:disabled { opacity: .55; }
+  .xem-truoc { background: var(--nen); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .ok { color: #2a9d5c; font-weight: 600; }
+  .bao { font-size: 14px; border-radius: 10px; padding: 10px 12px; background: var(--nen); }
+  .bao.loi { color: var(--do); }
+  .nho { font-size: 12.5px; color: var(--mo); margin: 0; }
+  .giua { text-align: center; padding: 28px 14px; }
+  .luoi2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cot { display: grid; gap: 4px; }
+  .cot > span { font-size: 12.5px; color: var(--mo); }
+  .chip.bat { background: var(--nhan); border-color: var(--nhan); color: var(--chu-nut); }
+  .bieu-do { display: flex; align-items: flex-end; gap: 3px; height: 56px; padding: 6px 2px 0; }
+  .bieu-do span { flex: 1; min-width: 4px; border-radius: 3px 3px 0 0; background: var(--nhan); opacity: .8; }
+  .bieu-do span:last-child { opacity: 1; }
+  .so-can { font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo" aria-hidden="true">🌙</div>
+    <div>
+      <h1>Mia</h1>
+      <p class="phu" id="chao">Trợ lý giấc ngủ &amp; vận động từ Garmin</p>
+    </div>
+  </header>
+
+  <section id="dang-tai" class="giua"><p class="phu">Đang mở…</p></section>
+
+  <section id="cho" class="giua" hidden>
+    <div style="font-size:40px">⏳</div>
+    <p><b>Đang chờ duyệt</b></p>
+    <p class="phu">Mia đã báo {{CHU_TEN}}. Duyệt xong Mia nhắn bạn trong Telegram, mở lại trang này để cài đặt nhé.</p>
+  </section>
+
+  <section id="chan" class="giua" hidden>
+    <p class="phu">Tài khoản này chưa được dùng Mia.</p>
+  </section>
+
+  <div id="cai-dat" hidden style="display:grid;gap:14px">
+    <section>
+      <h2>Mia gọi bạn là</h2>
+      <div class="chips" id="goi-chips"></div>
+      <div class="hang" id="goi-khac" hidden>
+        <label><input id="goi-tu" placeholder="Ví dụ: cô Ba" maxlength="20"></label>
+      </div>
+      <div class="hang">
+        <label for="xung">Mia xưng</label>
+        <select id="xung"></select>
+      </div>
+      <div class="xem-truoc" id="xem-truoc"></div>
+    </section>
+
+    <section>
+      <h2>Giờ nhận tin</h2>
+      <div class="hang"><label for="gio-sang">🌅 Buổi sáng · giấc ngủ đêm qua</label><select id="gio-sang"></select></div>
+      <div class="hang"><label for="gio-toi">🌆 Buổi tối · tổng kết ngày</label><select id="gio-toi"></select></div>
+    </section>
+
+    <section>
+      <h2>Tin buổi sáng</h2>
+      <p class="nho">Gửi kèm sau tin giấc ngủ, đúng giờ sáng bạn chọn.</p>
+      <div class="chips">
+        <button type="button" class="chip" id="tin-thoi-su" aria-pressed="false">🗞 Tin thời sự</button>
+        <button type="button" class="chip" id="tin-cong-nghe" aria-pressed="false">📰 Tin công nghệ</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Thực đơn hằng ngày</h2>
+      <div class="chips">
+        <button type="button" class="chip" id="thuc-don-bat" aria-pressed="false">🍽 Mia soạn thực đơn lúc 10:00</button>
+      </div>
+      <div id="thuc-don-ho-so" hidden style="display:grid;gap:10px">
+        <p class="nho">Mia soạn theo hồ sơ của bạn: món Việt, nấu ở nhà, có định lượng và calo. Khai càng rõ thực đơn càng hợp.</p>
+        <div class="luoi2">
+          <div class="cot"><span>Giới tính</span>
+            <div class="chips" id="gioi-tinh">
+              <button type="button" class="chip" data-v="nam" aria-pressed="false">Nam</button>
+              <button type="button" class="chip" data-v="nu" aria-pressed="false">Nữ</button>
+            </div>
+          </div>
+          <div class="cot"><span>Ăn sáng</span>
+            <div class="chips" id="an-sang">
+              <button type="button" class="chip" data-v="1" aria-pressed="false">Có</button>
+              <button type="button" class="chip" data-v="0" aria-pressed="false">Không</button>
+            </div>
+          </div>
+          <div class="cot"><span>Chiều cao (cm)</span><input id="cao-cm" type="number" inputmode="numeric" min="100" max="230" placeholder="165"></div>
+          <div class="cot"><span>Cân mục tiêu (kg)</span><input id="muc-tieu-kg" type="number" inputmode="decimal" step="0.1" min="35" max="200" placeholder="Để trống nếu giữ cân"></div>
+        </div>
+        <div class="cot"><span>Món thích / kiêng</span><input id="an-uong" maxlength="200" placeholder="Ví dụ: thích cá, không ăn bò, ít cay"></div>
+        <button class="nut phu-nut" id="thucdon-thu" hidden>Gửi thực đơn hôm nay</button>
+        <div class="bao" id="bao-thucdon" hidden></div>
+      </div>
+    </section>
+
+    <button class="nut" id="luu">Lưu cài đặt</button>
+    <div class="bao" id="bao-luu" hidden></div>
+
+    <section>
+      <h2>Cân nặng</h2>
+      <div class="hang">
+        <label><input id="kg" type="number" inputmode="decimal" step="0.1" min="35" max="200" placeholder="Cân hôm nay, ví dụ 60.5"></label>
+        <button class="nut" id="can-ghi" style="padding:10px 16px">Ghi</button>
+      </div>
+      <div class="bieu-do" id="can-bieu-do" hidden></div>
+      <div class="so-can" id="can-chu"></div>
+      <div class="bao" id="bao-can" hidden></div>
+      <button class="nut xoa" id="can-xoa" hidden>Xoá số cân hôm nay</button>
+      <p class="nho">Có mục tiêu thì Mia tính tốc độ, ngày về đích và chỉnh calo thực đơn theo. Nhắn /can 60.5 cho Mia cũng được.</p>
+    </section>
+
+    <section id="garmin-chua">
+      <h2>Kết nối Garmin</h2>
+      <p class="nho">Đăng nhập tài khoản Garmin Connect một lần. Mật khẩu chỉ dùng để lấy quyền đọc rồi bỏ đi, Mia không lưu mật khẩu.</p>
+      <input id="email" type="email" autocomplete="username" placeholder="Email Garmin" inputmode="email">
+      <input id="mat-khau" type="password" autocomplete="current-password" placeholder="Mật khẩu Garmin">
+      <button class="nut" id="ket-noi">Kết nối</button>
+      <div id="khung-ma" hidden style="display:grid;gap:10px">
+        <p class="nho">Garmin vừa gửi mã xác minh về email (hoặc tin nhắn) của bạn. Nhập mã vào đây:</p>
+        <input id="ma" inputmode="numeric" autocomplete="one-time-code" placeholder="Mã 6 số" maxlength="10">
+        <button class="nut" id="gui-ma">Xác nhận mã</button>
+      </div>
+      <div class="bao" id="bao-garmin" hidden></div>
+    </section>
+
+    <section id="garmin-co" hidden>
+      <h2>Garmin</h2>
+      <p class="ok">✅ Đã kết nối</p>
+      <button class="nut phu-nut" id="thu">Gửi thử tin sáng nay</button>
+      <button class="nut xoa" id="ngat">Ngắt kết nối Garmin</button>
+      <div class="bao" id="bao-co" hidden></div>
+    </section>
+
+    <p class="nho" style="text-align:center">Nhắn /ngu, /tongket, /thoisu, /tin, /thucdon hoặc /can cho Mia để xem ngay bất cứ lúc nào.</p>
+  </div>
+</main>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const $ = (id) => document.getElementById(id);
+const GOI = ["ba", "mẹ", "ông", "bà", "anh", "chị", "cô", "chú", "em", "bạn"];
+const XUNG = ["con", "cháu", "em", "chị", "anh", "mình"];
+let toi = null, goiChon = "", dangKetNoi = false;
+
+async function api(hd, du = {}) {
+  const r = await fetch("/api/mia", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData: tg ? tg.initData : "", hd, ...du }),
+  });
+  let d = {};
+  try { d = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(d.loi || "Mia đang bận, thử lại sau nhé.");
+  return d;
+}
+
+function bao(id, chu, loi) { const el = $(id); el.textContent = chu; el.hidden = !chu; el.classList.toggle("loi", !!loi); }
+const hoa = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+function veXemTruoc() {
+  const g = goiChon || "bạn", x = $("xung").value || "mình";
+  $("xem-truoc").textContent = `“${hoa(x)} chào buổi sáng ${g}! ☀️ Đêm qua ${g} ngủ 7 tiếng 20 phút…”`;
+}
+
+function chonGoi(g, tuGo) {
+  goiChon = g;
+  document.querySelectorAll("#goi-chips .chip").forEach((b) =>
+    b.setAttribute("aria-pressed", String(tuGo ? b.dataset.v === "khac" : b.dataset.v === g)));
+  $("goi-khac").hidden = !tuGo;
+  if (!tuGo && toi.xung_theo_goi[g]) $("xung").value = toi.xung_theo_goi[g];
+  veXemTruoc();
+}
+
+function veCaiDat() {
+  $("chao").textContent = `Xin chào ${toi.ten}`;
+  const chips = $("goi-chips"); chips.innerHTML = "";
+  [...GOI, "khac"].forEach((v) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.dataset.v = v; b.textContent = v === "khac" ? "Khác…" : hoa(v);
+    b.onclick = () => v === "khac" ? (chonGoi($("goi-tu").value.trim(), true), $("goi-tu").focus()) : chonGoi(v, false);
+    chips.appendChild(b);
+  });
+  const xs = [...new Set([...XUNG, toi.xung])];
+  $("xung").innerHTML = xs.map((x) => `<option value="${x}">${hoa(x)}</option>`).join("");
+  $("xung").value = toi.xung;
+  $("gio-sang").innerHTML = toi.gio_sang_cho_phep.map((h) => `<option value="${h}">${h}:00</option>`).join("");
+  $("gio-toi").innerHTML = toi.gio_toi_cho_phep.map((h) => `<option value="${h}">${h}:00</option>`).join("");
+  $("gio-sang").value = toi.gio_sang; $("gio-toi").value = toi.gio_toi;
+  const tuGo = !GOI.includes(toi.goi);
+  if (tuGo) $("goi-tu").value = toi.goi;
+  goiChon = toi.goi;
+  document.querySelectorAll("#goi-chips .chip").forEach((b) =>
+    b.setAttribute("aria-pressed", String(tuGo ? b.dataset.v === "khac" : b.dataset.v === toi.goi)));
+  $("goi-khac").hidden = !tuGo;
+  veXemTruoc(); veGarmin(); veTuyChon();
+  api("can_xem").then(veCan).catch(() => {});
+}
+
+function veGarmin() {
+  $("garmin-chua").hidden = !!toi.co_garmin;
+  $("garmin-co").hidden = !toi.co_garmin;
+}
+
+// ── Tin buổi sáng + thực đơn + cân nặng (đợt 2, 08/11) ──
+const bat = (id) => $(id).getAttribute("aria-pressed") === "true";
+function datBat(id, on) { $(id).setAttribute("aria-pressed", String(!!on)); }
+function chonTrong(nhomId, v) {
+  document.querySelectorAll(`#${nhomId} .chip`).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(v))));
+}
+const chonCua = (nhomId) => { const b = document.querySelector(`#${nhomId} .chip[aria-pressed="true"]`); return b ? b.dataset.v : ""; };
+
+["tin-thoi-su", "tin-cong-nghe", "thuc-don-bat"].forEach((id) =>
+  $(id).onclick = () => { datBat(id, !bat(id)); if (id === "thuc-don-bat") veThucDon(); });
+["gioi-tinh", "an-sang"].forEach((nhom) =>
+  document.querySelectorAll(`#${nhom} .chip`).forEach((b) => b.onclick = () => chonTrong(nhom, b.dataset.v)));
+
+function veThucDon() {
+  $("thuc-don-ho-so").hidden = !bat("thuc-don-bat");
+  $("thucdon-thu").hidden = !(toi && toi.thuc_don);
+}
+
+function veTuyChon() {
+  datBat("tin-thoi-su", toi.tin_thoi_su);
+  datBat("tin-cong-nghe", toi.tin_cong_nghe);
+  datBat("thuc-don-bat", toi.thuc_don);
+  chonTrong("gioi-tinh", toi.gioi_tinh || "");
+  chonTrong("an-sang", toi.an_sang ? 1 : 0);
+  $("cao-cm").value = toi.cao_cm || "";
+  $("muc-tieu-kg").value = toi.muc_tieu_kg || "";
+  $("an-uong").value = toi.an_uong || "";
+  veThucDon();
+}
+
+function veCan(d) {
+  const ds = d.ds || [];
+  $("can-chu").innerHTML = d.chu || "";
+  const bd = $("can-bieu-do"); bd.innerHTML = "";
+  const gan = ds.slice(-14);
+  if (gan.length >= 2) {
+    const kgs = gan.map((x) => x.kg), lo = Math.min(...kgs), hi = Math.max(...kgs);
+    gan.forEach((x) => {
+      const s = document.createElement("span");
+      const t = hi - lo < 0.05 ? 0.6 : 0.25 + 0.75 * (x.kg - lo) / (hi - lo);
+      s.style.height = `${Math.round(t * 100)}%`; s.title = `${x.ngay}: ${x.kg} kg`;
+      bd.appendChild(s);
+    });
+    bd.hidden = false;
+  } else bd.hidden = true;
+  $("can-xoa").hidden = !d.da_can_hom_nay;
+}
+
+$("can-ghi").onclick = async () => {
+  const kg = $("kg").value.trim();
+  if (!kg) return bao("bao-can", "Nhập số cân hôm nay trước nhé.", true);
+  $("can-ghi").disabled = true;
+  try { veCan(await api("can", { kg })); $("kg").value = ""; bao("bao-can", ""); tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success"); }
+  catch (e) { bao("bao-can", e.message, true); }
+  $("can-ghi").disabled = false;
+};
+
+let xacNhanXoaCan = false;
+$("can-xoa").onclick = async () => {
+  if (!xacNhanXoaCan) { xacNhanXoaCan = true; $("can-xoa").textContent = "Bấm lần nữa để xoá"; return; }
+  $("can-xoa").disabled = true;
+  try { veCan(await api("can_xoa")); } catch (e) { bao("bao-can", e.message, true); }
+  $("can-xoa").disabled = false; $("can-xoa").textContent = "Xoá số cân hôm nay"; xacNhanXoaCan = false;
+};
+
+$("thucdon-thu").onclick = async () => {
+  $("thucdon-thu").disabled = true; bao("bao-thucdon", "Mia đang soạn thực đơn, chừng 1 phút…");
+  try { await api("thucdon"); bao("bao-thucdon", "Đã gửi, quay lại khung chat với Mia để xem nhé."); }
+  catch (e) { bao("bao-thucdon", e.message, true); }
+  $("thucdon-thu").disabled = false;
+};
+
+$("goi-tu").addEventListener("input", (e) => { goiChon = e.target.value.trim().toLowerCase(); veXemTruoc(); });
+$("xung").addEventListener("change", veXemTruoc);
+
+$("luu").onclick = async () => {
+  if (!goiChon) return bao("bao-luu", "Chọn cách Mia gọi bạn trước nhé.", true);
+  if (bat("thuc-don-bat") && !chonCua("gioi-tinh")) return bao("bao-luu", "Chọn giới tính để Mia tính khẩu phần nhé.", true);
+  $("luu").disabled = true;
+  try {
+    toi = { ...toi, ...(await api("luu", { goi: goiChon, xung: $("xung").value,
+      gio_sang: +$("gio-sang").value, gio_toi: +$("gio-toi").value,
+      tin_thoi_su: bat("tin-thoi-su"), tin_cong_nghe: bat("tin-cong-nghe"), thuc_don: bat("thuc-don-bat"),
+      gioi_tinh: chonCua("gioi-tinh"), an_sang: chonCua("an-sang") !== "0",
+      cao_cm: $("cao-cm").value || 0, muc_tieu_kg: $("muc-tieu-kg").value || 0, an_uong: $("an-uong").value })) };
+    veThucDon();
+    const them = [toi.tin_thoi_su || toi.tin_cong_nghe ? "tin buổi sáng" : "", toi.thuc_don ? "thực đơn lúc 10:00" : ""].filter(Boolean);
+    bao("bao-luu", `Đã lưu. Mia nhắn ${toi.goi} lúc ${toi.gio_sang}:00 và ${toi.gio_toi}:00 mỗi ngày${them.length ? ", kèm " + them.join(" và ") : ""}.`);
+    api("can_xem").then(veCan).catch(() => {});
+    tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success");
+  } catch (e) { bao("bao-luu", e.message, true); }
+  $("luu").disabled = false;
+};
+
+async function theoDoiMa() {
+  while (dangKetNoi) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (!dangKetNoi) break;
+    try {
+      const d = await api("mfa");
+      if (d.trang_thai === "can" && $("khung-ma").hidden) {
+        $("khung-ma").hidden = false; bao("bao-garmin", ""); $("ma").focus();
+      }
+    } catch (e) {}
+  }
+}
+
+$("ket-noi").onclick = async () => {
+  const email = $("email").value.trim(), mk = $("mat-khau").value;
+  if (!email || !mk) return bao("bao-garmin", "Nhập email và mật khẩu Garmin nhé.", true);
+  dangKetNoi = true; $("ket-noi").disabled = true; $("khung-ma").hidden = true;
+  bao("bao-garmin", "Đang đăng nhập Garmin… có thể mất tới 1 phút.");
+  theoDoiMa();
+  try {
+    const d = await api("garmin", { email, mat_khau: mk });
+    $("mat-khau").value = "";
+    toi = { ...toi, ...d };
+    dangKetNoi = false; $("khung-ma").hidden = true; bao("bao-garmin", "");
+    veGarmin();
+    bao("bao-co", `Kết nối xong${d.ten_garmin ? " với " + d.ten_garmin : ""}! Bấm “Gửi thử” để xem tin sáng nay.`);
+    tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success");
+  } catch (e) {
+    dangKetNoi = false; $("khung-ma").hidden = true; bao("bao-garmin", e.message, true);
+  }
+  $("ket-noi").disabled = false;
+};
+
+$("gui-ma").onclick = async () => {
+  $("gui-ma").disabled = true;
+  try {
+    await api("ma", { ma: $("ma").value });
+    $("khung-ma").hidden = true; $("ma").value = "";
+    bao("bao-garmin", "Đã gửi mã, Mia đang đăng nhập nốt…");
+  } catch (e) { bao("bao-garmin", e.message, true); }
+  $("gui-ma").disabled = false;
+};
+
+$("thu").onclick = async () => {
+  $("thu").disabled = true; bao("bao-co", "Mia đang đọc số liệu, chờ chút…");
+  try { await api("thu"); bao("bao-co", "Đã gửi, quay lại khung chat với Mia để xem nhé."); }
+  catch (e) { bao("bao-co", e.message, true); }
+  $("thu").disabled = false;
+};
+
+let xacNhanNgat = false;
+$("ngat").onclick = async () => {
+  if (!xacNhanNgat) { xacNhanNgat = true; $("ngat").textContent = "Bấm lần nữa để ngắt"; return; }
+  $("ngat").disabled = true;
+  try { toi = { ...toi, ...(await api("ngat")) }; veGarmin(); }
+  catch (e) { bao("bao-co", e.message, true); }
+  $("ngat").disabled = false; $("ngat").textContent = "Ngắt kết nối Garmin"; xacNhanNgat = false;
+};
+
+(async () => {
+  try {
+    toi = await api("toi");
+    $("dang-tai").hidden = true;
+    if (toi.trang_thai === "duyet") { $("cai-dat").hidden = false; veCaiDat(); }
+    else if (toi.trang_thai === "chan") $("chan").hidden = false;
+    else $("cho").hidden = false;
+  } catch (e) {
+    $("dang-tai").innerHTML = `<p class="phu">${e.message}</p>`;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {
+    "api/cron.py": {
+      "maxDuration": 300
+    },
+    "api/webhook.py": {
+      "maxDuration": 300
+    },
+    "api/mia.py": {
+      "maxDuration": 300
+    },
+    "api/app.py": {
+      "includeFiles": "mini/**"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron?loai=trua",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
