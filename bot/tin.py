@@ -1,4 +1,4 @@
-# Bản tin buổi sáng: lấy tin 24h qua, Gemini chọn vài tin, đọc nội dung từng bài,
+# Bản tin buổi sáng: lấy tin 24h qua, Claude chọn vài tin, đọc nội dung từng bài,
 # tóm tắt rồi kể lại theo cách xưng hô của từng người. Ba bản: thời sự (RSS báo Việt), xã hội · văn hoá · thể thao (RSS),
 # và công nghệ (nguồn JSON, mặc định VGSNews).
 import html
@@ -22,7 +22,7 @@ RSS_THOI_SU = [
     ("VnExpress", "https://vnexpress.net/rss/the-gioi.rss"),
     ("Tuổi Trẻ", "https://tuoitre.vn/rss/thoi-su.rss"),
 ]
-# Xã hội · văn hoá · thể thao: mỗi mảng vài nguồn, Gemini chọn sao cho mảng nào cũng có tin.
+# Xã hội · văn hoá · thể thao: mỗi mảng vài nguồn, Claude chọn sao cho mảng nào cũng có tin.
 RSS_XA_HOI = [
     ("VnExpress · Đời sống", "https://vnexpress.net/rss/doi-song.rss"),
     ("VnExpress · Giáo dục", "https://vnexpress.net/rss/giao-duc.rss"),
@@ -32,7 +32,7 @@ RSS_XA_HOI = [
     ("VnExpress · Thể thao", "https://vnexpress.net/rss/the-thao.rss"),
     ("Tuổi Trẻ · Thể thao", "https://tuoitre.vn/rss/the-thao.rss"),
 ]
-MOI_NGUON = 25  # giữ đầu vào cho Gemini gọn
+MOI_NGUON = 25  # giữ đầu vào cho Claude gọn
 
 SYSTEM_CHON = """Bạn là biên tập viên chọn tin {chu_de} buổi sáng cho một người đọc bận rộn.
 Đầu vào là danh sách tin, mỗi tin có số thứ tự "i".
@@ -149,13 +149,8 @@ def noi_dung_bai(url: str, toi_da: int = 3000) -> str:
     return "\n".join(doan)[:toi_da]
 
 
-def _json_gemini(system: str, du_lieu, schema: dict, max_tokens: int):
-    return json.loads(ai.goi_gemini(system, du_lieu, {
-        "temperature": 0.6,
-        "maxOutputTokens": max_tokens,
-        "responseMimeType": "application/json",
-        "responseSchema": schema,
-    }))
+def _json_ai(system: str, du_lieu, schema: dict, max_tokens: int):
+    return json.loads(ai.goi_ai(system, du_lieu, max_tokens=max_tokens, schema=schema))
 
 
 def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | None,
@@ -167,7 +162,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
     danh_sach = [{"i": i, "tieu_de": b.get("title"), "mo_ta": b.get("digest"),
                   "nguon": b.get("source")} for i, b in enumerate(bai)]
     chon = []
-    for i in _json_gemini(SYSTEM_CHON.format(chu_de=chu_de, so_tin=so_tin, uu_tien=uu_tien),
+    for i in _json_ai(SYSTEM_CHON.format(chu_de=chu_de, so_tin=so_tin, uu_tien=uu_tien),
                           danh_sach, SCHEMA_CHON, 256):
         if isinstance(i, int) and 0 <= i < len(bai) and i not in chon:
             chon.append(i)
@@ -180,7 +175,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
         noi_dung = list(pool.map(lambda i: noi_dung_bai(bai[i]["url"]), chon))
     dau_vao = [{"i": i, "tieu_de": bai[i].get("title"), "nguon": bai[i].get("source"),
                 "noi_dung": nd or bai[i].get("digest")} for i, nd in zip(chon, noi_dung)]
-    ke = _json_gemini(SYSTEM_KE.format(chu_de=chu_de, goi=p["goi"], xung=p["xung"]), dau_vao, SCHEMA_KE, 4096)
+    ke = _json_ai(SYSTEM_KE.format(chu_de=chu_de, goi=p["goi"], xung=p["xung"]), dau_vao, SCHEMA_KE, 4096)
 
     hom_nay = datetime.now(VN)
     dong = [f"{tieu_de} sáng {THU[hom_nay.weekday()]}, {hom_nay:%d/%m}</b>", ""]
@@ -203,7 +198,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
 
 def _key_dem(loai: str, p: dict) -> str:
     # Bản tin soạn xong giữ trong ngày theo cách xưng hô, để nhiều người cùng gọi "anh" / "chị"
-    # không tốn Gemini soạn lại, và /thoisu nhắn nhiều lần cũng không soạn lại (08/11/2026).
+    # không tốn Claude soạn lại, và /thoisu nhắn nhiều lần cũng không soạn lại (08/11/2026).
     return f"tin:{loai}:{datetime.now(VN):%Y-%m-%d}:{p['goi']}-{p['xung']}"
 
 

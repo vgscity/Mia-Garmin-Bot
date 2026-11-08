@@ -1,7 +1,7 @@
 # Thực đơn hằng ngày cho từng người (10h VN), soạn theo hồ sơ tự khai trong Mini App — giới tính,
 # chiều cao, cân mục tiêu, có ăn sáng không, món thích / kiêng. Chủ bot có thể ấn định thêm trong
-# CHU_HO_SO: kcal_min, kcal_max, dam_min, dam_uu_tien (câu dặn Gemini về loại đạm).
-# Gemini soạn, dựa vào calo đốt hôm qua (nếu có Garmin); nhớ thực đơn 7 ngày gần nhất để không lặp món.
+# CHU_HO_SO: kcal_min, kcal_max, dam_min, dam_uu_tien (câu dặn Claude về loại đạm).
+# Claude soạn, dựa vào calo đốt hôm qua (nếu có Garmin); nhớ thực đơn 7 ngày gần nhất để không lặp món.
 import json
 from datetime import timedelta
 from html import escape
@@ -159,12 +159,7 @@ def thuc_don(luu: bool = True, p: dict | None = None) -> str:
     schema = _schema(an_sang)
     bua_keys = ["sang", "trua", "toi"] if an_sang else ["trua", "toi"]
     for _ in range(3):  # AI hay soạn thiếu calo/đạm — lệch thì bắt soạn lại
-        td = json.loads(ai.goi_gemini(system, du_lieu, {
-            "temperature": 0.9,
-            "maxOutputTokens": 2048,
-            "responseMimeType": "application/json",
-            "responseSchema": schema,
-        }))
+        td = json.loads(ai.goi_ai(system, du_lieu, max_tokens=4096, schema=schema))
         tong = sum(td[k]["kcal"] for k in bua_keys)
         dam = sum(td[k]["dam_g"] for k in bua_keys)
         if kcal_min - 100 <= tong <= kcal_max + 100 and dam >= dam_min:

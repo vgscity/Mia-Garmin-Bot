@@ -1,6 +1,6 @@
 # Tình hình game Đấu Trường PC (vgs.zone) trong ngày — phần RIÊNG của chủ bot, chỉ chạy khi đặt
 # BAO_CAO_SECRET (+ BAO_CAO_URL). Số lấy từ cổng chỉ đọc của vgs.zone, so với hôm qua để thấy lên
-# hay xuống, rồi nhờ Gemini nhận xét vài dòng. Không dùng VGS thì bỏ qua file này.
+# hay xuống, rồi nhờ Claude nhận xét vài dòng. Không dùng VGS thì bỏ qua file này.
 import json
 import os
 import urllib.request
@@ -43,7 +43,7 @@ Chỉ dùng số có trong dữ liệu, không bịa. Chữ thuần, không mark
 
 
 def _cho_ai(d: dict | None) -> dict | None:
-    # Đổi mã nguồn sang tên tiếng Việt để Gemini khỏi đọc "dap-do" cho người đọc.
+    # Đổi mã nguồn sang tên tiếng Việt để Claude khỏi đọc "dap-do" cho người đọc.
     if not d:
         return d
     return {**d, "nguon": [{**n, "nguon": TEN_NGUON.get(n["nguon"], n["nguon"])} for n in d["nguon"]],
@@ -133,8 +133,7 @@ def bao_cao_game(ngay: date | None = None, p: dict | None = None) -> str:
         q = None
     nhan_xet = None
     try:
-        nhan_xet = ai.goi_gemini(ai._xung(SYSTEM, p), {"hom_nay": _cho_ai(d), "hom_qua": _cho_ai(q)},
-                                 {"temperature": 0.4, "maxOutputTokens": 800})
+        nhan_xet = ai.goi_ai(ai._xung(SYSTEM, p), {"hom_nay": _cho_ai(d), "hom_qua": _cho_ai(q)}, max_tokens=800)
     except Exception as e:
         print(f"AI nhận xét game lỗi: {type(e).__name__}: {e}")
     return soan_tin(d, q, ngay, nhan_xet, p)

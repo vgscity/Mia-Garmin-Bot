@@ -10,7 +10,7 @@
 #   CHU_TEN      cách nhắc tới chủ bot với người khác, ví dụ "anh Alex" (mặc định "chủ bot")
 #   CHU_GOI / CHU_XUNG   Mia gọi chủ là gì, xưng gì (mặc định "bạn" / "mình")
 #   CHU_HO_SO    JSON: gioi_tinh, cao_cm, muc_tieu_kg, an_sang, an_uong, tin_thoi_su, tin_cong_nghe,
-#                thuc_don, và riêng cho thực đơn: kcal_min, kcal_max, dam_min, dam_uu_tien (câu dặn Gemini)
+#                thuc_don, và riêng cho thực đơn: kcal_min, kcal_max, dam_min, dam_uu_tien (câu dặn Claude)
 import json
 import os
 

@@ -1,11 +1,88 @@
-# Nhờ Gemini đọc số liệu giấc ngủ (đêm qua + 7 đêm gần nhất) rồi viết nhận xét.
+# Mọi chỗ cần AI (nhận xét giấc ngủ, tổng kết ngày, chọn + kể tin, soạn thực đơn, nhận xét game)
+# đều đi qua đây, gọi Claude bằng SDK anthropic. Model đặt bằng CLAUDE_MODEL (mặc định claude-opus-5-5),
+# độ sâu suy nghĩ bằng CLAUDE_EFFORT (mặc định "low": việc ở đây là tóm tắt số liệu, không cần nghĩ sâu).
+# Trả JSON thì truyền schema → dùng structured output của API, không cần dặn "trả JSON" trong prompt.
 import json
 import os
-import time
-import urllib.error
-import urllib.request
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-lite-latest")
+import anthropic
+
+MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5")
+EFFORT = os.environ.get("CLAUDE_EFFORT", "low")
+
+_khach_hang: anthropic.Anthropic | None = None
+
+
+def _khach() -> anthropic.Anthropic:
+    global _khach_hang
+    if _khach_hang is None:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise RuntimeError("Thiếu ANTHROPIC_API_KEY")
+        # SDK tự thử lại 429/5xx; 90s đủ cho bản tin dài, cron có maxDuration 300.
+        _khach_hang = anthropic.Anthropic(max_retries=3, timeout=90.0)
+    return _khach_hang
+
+
+def schema_chuan(s: dict) -> dict:
+    """Đổi schema kiểu Gemini (type viết HOA, không có additionalProperties) sang JSON Schema chuẩn
+    mà structured output của Claude đòi: type thường, object nào cũng additionalProperties=false
+    và required đủ mọi trường."""
+    if not isinstance(s, dict):
+        return s
+    ra = {}
+    for k, v in s.items():
+        if k == "type" and isinstance(v, str):
+            ra[k] = v.lower()
+        elif k == "properties":
+            ra[k] = {ten: schema_chuan(con) for ten, con in v.items()}
+        elif k == "items":
+            ra[k] = schema_chuan(v)
+        else:
+            ra[k] = v
+    if ra.get("type") == "object":
+        ra["additionalProperties"] = False
+        ra["required"] = list((ra.get("properties") or {}).keys())
+    return ra
+
+
+def goi_ai(system: str, du_lieu, *, max_tokens: int = 1024, schema: dict | None = None) -> str:
+    """Gửi system + dữ liệu (JSON) cho Claude, trả về chữ (hoặc chuỗi JSON đúng schema nếu có schema)."""
+    output_config: dict = {"effort": EFFORT}
+    if schema:
+        output_config["format"] = {"type": "json_schema", "schema": schema_chuan(schema)}
+    try:
+        r = _khach().beta.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": json.dumps(du_lieu, ensure_ascii=False)}],
+            output_config=output_config,
+            # Bị bộ lọc an toàn từ chối thì máy chủ tự chạy lại bằng model khác, khỏi mất bản tin.
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+        )
+    except anthropic.RateLimitError as e:
+        raise RuntimeError("Claude đang quá tải (429), thử lại sau") from e
+    except anthropic.APIStatusError as e:
+        raise RuntimeError(f"Claude lỗi {e.status_code}: {e.message}"[:300]) from e
+    except anthropic.APIConnectionError as e:
+        raise RuntimeError(f"Không nối được Claude: {type(e).__name__}") from e
+    if r.stop_reason == "refusal":
+        ly_do = (r.stop_details.category if r.stop_details else None) or "không rõ"
+        raise RuntimeError(f"Claude từ chối trả lời ({ly_do})")
+    text = "".join(b.text for b in r.content if b.type == "text").strip()
+    if not text:
+        raise RuntimeError("Claude không trả về nội dung")
+    if r.stop_reason == "max_tokens":
+        print(f"Claude bị cắt ở max_tokens={max_tokens} (model {r.model})")
+    return text
+
+
+def goi_gemini(system: str, du_lieu, config: dict) -> str:
+    """Tên cũ (thời còn Gemini) — giữ cho chỗ nào chưa đổi. temperature bỏ qua: Claude đời mới không nhận."""
+    return goi_ai(system, du_lieu, max_tokens=int(config.get("maxOutputTokens") or 1024),
+                  schema=config.get("responseSchema"))
+
 
 SYSTEM = """Bạn là Mia, trợ lý quan tâm sức khoẻ của {goi}, đọc số liệu giấc ngủ từ đồng hồ Garmin của {goi}.
 Luôn gọi người đọc là "{goi}", xưng "{xung}". Giọng ấm áp, gần gũi, không sến.
@@ -30,40 +107,7 @@ def _xung(system: str, p: dict | None) -> str:
 
 
 def phan_tich(du_lieu: dict, p: dict | None = None) -> str:
-    return goi_gemini(_xung(SYSTEM, p), du_lieu, {"temperature": 0.5, "maxOutputTokens": 1024})
-
-
-def goi_gemini(system: str, du_lieu, config: dict) -> str:
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        raise RuntimeError("Thiếu GEMINI_API_KEY")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
-    body = json.dumps({
-        "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": json.dumps(du_lieu, ensure_ascii=False)}]}],
-        "generationConfig": config,
-    }).encode()
-    for lan in range(3):
-        req = urllib.request.Request(url, body, {"Content-Type": "application/json", "x-goog-api-key": key})
-        try:
-            with urllib.request.urlopen(req, timeout=40) as r:
-                data = json.load(r)
-            break
-        except urllib.error.HTTPError as e:
-            if (e.code == 429 or e.code >= 500) and lan < 2:
-                time.sleep(5 * (lan + 1))
-                continue
-            raise RuntimeError(f"Gemini lỗi {e.code}") from e
-        except (TimeoutError, urllib.error.URLError) as e:  # Gemini chậm quá 40s: thử lại, đừng bỏ cả bản tin (05/11)
-            if lan < 2:
-                time.sleep(3)
-                continue
-            raise RuntimeError(f"Gemini không trả lời kịp: {type(e).__name__}") from e
-    parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
-    text = "".join(p.get("text", "") for p in parts).strip()
-    if not text:
-        raise RuntimeError("Gemini không trả về nội dung")
-    return text
+    return goi_ai(_xung(SYSTEM, p), du_lieu, max_tokens=1024)
 
 
 SYSTEM_TOI = """Bạn là Mia, trợ lý quan tâm sức khoẻ của {goi}, đọc số liệu cả ngày hôm nay từ đồng hồ Garmin của {goi}.
@@ -84,4 +128,4 @@ Quy tắc:
 
 
 def tong_ket_ngay(du_lieu: dict, p: dict | None = None) -> str:
-    return goi_gemini(_xung(SYSTEM_TOI, p), du_lieu, {"temperature": 0.5, "maxOutputTokens": 1024})
+    return goi_ai(_xung(SYSTEM_TOI, p), du_lieu, max_tokens=1024)

@@ -37,7 +37,7 @@ api/cron.py      Vercel Cron mỗi giờ: ai đặt giờ sáng/tối trùng gi�
 api/mia.py       API cho Mini App (xác thực initData của Telegram bằng BOT_TOKEN)
 api/app.py       trang Mini App (mini/mia.html)
 api/man_phu.py   cổng JSON chỉ đọc cho dashboard riêng (tuỳ chọn, cần MAN_PHU_KEY)
-bot/ngu.py       giấc ngủ        bot/tong_ket.py  tổng kết ngày     bot/ai.py       Gemini
+bot/ngu.py       giấc ngủ        bot/tong_ket.py  tổng kết ngày     bot/ai.py       Claude API
 bot/tin.py       bản tin sáng    bot/thuc_don.py  thực đơn          bot/can_nang.py sổ cân
 bot/nguoi.py     người dùng (bảng mia_nguoi)       bot/kho.py       kho key-value (Turso)
 bot/dau_truong.py  phần riêng của VGS (báo cáo game), tắt khi không đặt BAO_CAO_SECRET
@@ -50,7 +50,7 @@ bản tin đệm) và `mia_nguoi` (người dùng + hồ sơ). Chạy ở máy k
 ## Tự dựng
 
 1. Tạo bot ở [@BotFather](https://t.me/BotFather), lấy `BOT_TOKEN`; lấy Telegram id của bạn làm `OWNER_ID`.
-2. Tạo database Turso, lấy `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`. Lấy `GEMINI_API_KEY` ở Google AI Studio.
+2. Tạo database Turso, lấy `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`. Lấy `ANTHROPIC_API_KEY` ở platform.claude.com (AI của Mia là Claude; model đổi bằng `CLAUDE_MODEL`).
 3. Sao `.env.example` thành `.env`, điền biến. Hồ sơ của chủ bot (cách xưng hô, mục tiêu cân, món ăn…)
    nằm hết trong biến `CHU_*`, không có trong code.
 4. Deploy lên Vercel: `vercel --prod` (cần `"framework": null` trong `vercel.json`, đã có). Đặt các biến
@@ -74,6 +74,6 @@ Thử cron không gửi: `GET /api/cron?dry=1&gio=7`, `?dry=1&loai=trua` hoặc 
   người dùng chứ không im lặng. Đăng nhập nhiều lần bị 429, đợi khoảng 1 tiếng.
 - Request đăng nhập Garmin giữ kết nối tới 4 phút để chờ mã MFA (`maxDuration` 300 trong `vercel.json`).
 - Bản tin soạn xong được đệm trong ngày theo cách xưng hô, nên nhiều người cùng gọi "anh" không tốn
-  Gemini soạn lại.
+  Claude soạn lại.
 
 Giấy phép MIT. Tác giả: Alex Nguyen ([alexvgs.tech](https://alexvgs.tech)).
