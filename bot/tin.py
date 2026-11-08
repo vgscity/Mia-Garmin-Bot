@@ -1,5 +1,6 @@
 # Bản tin buổi sáng: lấy tin 24h qua, Gemini chọn vài tin, đọc nội dung từng bài,
-# tóm tắt rồi kể lại theo cách xưng hô của từng người. Hai bản: thời sự (RSS báo Việt) và công nghệ (VGSNews).
+# tóm tắt rồi kể lại theo cách xưng hô của từng người. Ba bản: thời sự (RSS báo Việt), xã hội · văn hoá · thể thao (RSS),
+# và công nghệ (nguồn JSON, mặc định VGSNews).
 import html
 import json
 import os
@@ -20,6 +21,16 @@ RSS_THOI_SU = [
     ("VnExpress", "https://vnexpress.net/rss/thoi-su.rss"),
     ("VnExpress", "https://vnexpress.net/rss/the-gioi.rss"),
     ("Tuổi Trẻ", "https://tuoitre.vn/rss/thoi-su.rss"),
+]
+# Xã hội · văn hoá · thể thao: mỗi mảng vài nguồn, Gemini chọn sao cho mảng nào cũng có tin.
+RSS_XA_HOI = [
+    ("VnExpress · Đời sống", "https://vnexpress.net/rss/doi-song.rss"),
+    ("VnExpress · Giáo dục", "https://vnexpress.net/rss/giao-duc.rss"),
+    ("Tuổi Trẻ · Nhịp sống trẻ", "https://tuoitre.vn/rss/nhip-song-tre.rss"),
+    ("Tuổi Trẻ · Văn hoá", "https://tuoitre.vn/rss/van-hoa.rss"),
+    ("VnExpress · Giải trí", "https://vnexpress.net/rss/giai-tri.rss"),
+    ("VnExpress · Thể thao", "https://vnexpress.net/rss/the-thao.rss"),
+    ("Tuổi Trẻ · Thể thao", "https://tuoitre.vn/rss/the-thao.rss"),
 ]
 MOI_NGUON = 25  # giữ đầu vào cho Gemini gọn
 
@@ -81,9 +92,17 @@ def _chu_thuan(s: str | None) -> str:
 
 
 def lay_thoi_su(gio: int = 24) -> list[dict]:
+    return lay_rss(RSS_THOI_SU, gio)
+
+
+def lay_xa_hoi(gio: int = 24) -> list[dict]:
+    return lay_rss(RSS_XA_HOI, gio)
+
+
+def lay_rss(feeds: list[tuple[str, str]], gio: int = 24) -> list[dict]:
     moc = time.time() - gio * 3600
     bai = []
-    for nguon, url in RSS_THOI_SU:
+    for nguon, url in feeds:
         try:
             goc = ElementTree.fromstring(_get(url))
         except Exception as e:  # một báo lỗi thì vẫn dùng các báo còn lại
@@ -143,7 +162,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
           so_tin: str = "5–6", p: dict | None = None) -> str | None:
     if not bai:
         return None
-    p = p or nguoi._ba()
+    p = p or nguoi._chu()
     # Bước 1: chọn tin từ tiêu đề + mô tả ngắn.
     danh_sach = [{"i": i, "tieu_de": b.get("title"), "mo_ta": b.get("digest"),
                   "nguon": b.get("source")} for i, b in enumerate(bai)]
@@ -205,7 +224,7 @@ def _ghi_dem(loai: str, p: dict, text: str) -> None:
 
 
 def ban_tin_thoi_su(p: dict | None = None) -> str | None:
-    p = p or nguoi._ba()
+    p = p or nguoi._chu()
     dem = _doc_dem("thoi-su", p)
     if dem:
         return dem
@@ -222,8 +241,27 @@ def ban_tin_thoi_su(p: dict | None = None) -> str | None:
     return text
 
 
+def ban_tin_xa_hoi(p: dict | None = None) -> str | None:
+    p = p or nguoi._chu()
+    dem = _doc_dem("xa-hoi", p)
+    if dem:
+        return dem
+    text = _soan(
+        lay_xa_hoi(),
+        "xã hội, văn hoá và thể thao",
+        "chọn sao cho có cả ba mảng: 2 tin xã hội / đời sống, 2 tin văn hoá / giải trí, 2 tin thể thao (ưu tiên thể thao Việt Nam); tin nhẹ nhàng, gần gũi, tránh tin hình sự hay tai nạn",
+        "🎭 <b>Tin xã hội · văn hoá · thể thao",
+        None,
+        so_tin="6",
+        p=p,
+    )
+    if text:
+        _ghi_dem("xa-hoi", p, text)
+    return text
+
+
 def ban_tin(p: dict | None = None) -> str | None:
-    p = p or nguoi._ba()
+    p = p or nguoi._chu()
     dem = _doc_dem("cong-nghe", p)
     if dem:
         return dem

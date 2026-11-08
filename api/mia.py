@@ -1,7 +1,7 @@
 # API cho Mini App Mia (08/11/2026). POST JSON {initData, hd, ...}; người gọi xác thực bằng chữ ký
 # initData của Telegram (HMAC theo BOT_TOKEN), không tin id gửi lên.
 #   hd=toi      → thông tin của mình (chưa có thì vào hàng chờ + báo chủ bot duyệt)
-#   hd=luu      → goi, xung, gio_sang, gio_toi (+ từ 08/11 đợt 2: tin_thoi_su, tin_cong_nghe, thuc_don,
+#   hd=luu      → goi, xung, gio_sang, gio_toi (+ từ 08/11 đợt 2: tin_thoi_su, tin_xa_hoi, tin_cong_nghe, thuc_don,
 #                 gioi_tinh, cao_cm, muc_tieu_kg, an_sang, an_uong — thiếu trường nào thì giữ nguyên)
 #   hd=can      → kg: ghi cân hôm nay; hd=can_xem → sổ cân + tiến độ; hd=can_xoa → xoá số hôm nay
 #   hd=thucdon  → soạn và gửi thực đơn hôm nay ngay (đã bật thực đơn)
@@ -123,7 +123,7 @@ class handler(BaseHTTPRequestHandler):
                 if not goi or not xung or gs not in nguoi.GIO_SANG or gt not in nguoi.GIO_TOI:
                     return self._json(400, {"loi": "Thiếu cách xưng hô hoặc giờ chưa hợp lệ."})
                 cap = {"goi": goi, "xung": xung, "gio_sang": gs, "gio_toi": gt}
-                for k in ("tin_thoi_su", "tin_cong_nghe", "thuc_don", "an_sang"):
+                for k in ("tin_thoi_su", "tin_xa_hoi", "tin_cong_nghe", "thuc_don", "an_sang"):
                     if k in body:
                         cap[k] = 1 if body.get(k) else 0
                 if "gioi_tinh" in body:

@@ -1,7 +1,7 @@
 # Webhook Telegram. Chủ bot (OWNER_ID) dùng đủ lệnh; người nhà được chủ duyệt dùng /ngu, /tongket,
-# /thoisu, /tin, /thucdon (khi đã bật trong Mia), /can, /caidat (mở Mini App). Người lạ /start → vào hàng
+# /thoisu, /xahoi, /tin, /thucdon (khi đã bật trong Mia), /can, /caidat (mở Mini App). Người lạ /start → vào hàng
 # chờ, chủ bấm Duyệt/Không ngay trong tin Mia gửi.
-# Lệnh: /ngu = báo giấc ngủ đêm qua, /ngu hqua = đêm trước nữa, /thoisu = tin thời sự, /tin = tin công nghệ,
+# Lệnh: /ngu = báo giấc ngủ đêm qua, /ngu hqua = đêm trước nữa, /thoisu = tin thời sự, /xahoi = xã hội · văn hoá · thể thao, /tin = tin công nghệ,
 # /tongket = tổng kết vận động + nhịp tim hôm nay, /thucdon = thực đơn hôm nay,
 # /can 75.2 = ghi cân (/can: xem tiến độ, /can xoa: xoá số hôm nay),
 # /game = tình hình Đấu Trường PC (chỉ chủ bot, khi có BAO_CAO_SECRET).
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bot import can_nang, dau_truong, nguoi, telegram  # noqa: E402
 from bot.nguoi import bao_ba_duyet, ten_cua  # noqa: E402
 from bot.ngu import bao_cao, hom_nay_vn  # noqa: E402
-from bot.tin import ban_tin, ban_tin_thoi_su  # noqa: E402
+from bot.tin import ban_tin, ban_tin_thoi_su, ban_tin_xa_hoi  # noqa: E402
 from bot.thuc_don import thuc_don  # noqa: E402
 from bot.tong_ket import tong_ket  # noqa: E402
 
@@ -31,7 +31,7 @@ def chao_chu(p: dict) -> str:
            f"10–11h {x} gửi thực đơn; buổi tối {x} tổng kết vận động, nhịp tim cả ngày")
     chu += " và tình hình game Đấu Trường PC" if dau_truong.co_cau_hinh() else ""
     chu += (f". Giờ sáng/tối và các mục bật/tắt {g} đổi trong /caidat.\n"
-            f"{nguoi.hoa(g)} nhắn /ngu để xem giấc ngủ ngay (/ngu hqua: đêm trước), /thoisu và /tin để đọc tin, "
+            f"{nguoi.hoa(g)} nhắn /ngu để xem giấc ngủ ngay (/ngu hqua: đêm trước), /thoisu, /xahoi và /tin để đọc tin, "
             f"/tongket để xem tổng kết hôm nay, /thucdon để xem thực đơn, /can 75.2 để ghi cân")
     chu += ", /game để xem game hôm nay (/game hqua: hôm qua)." if dau_truong.co_cau_hinh() else "."
     return chu
@@ -94,6 +94,9 @@ class handler(BaseHTTPRequestHandler):
             elif lenh == "/tin":
                 telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
                 telegram.gui(chat_id, ban_tin(p) or f"Hôm nay chưa có tin mới nào {g} ơi 📭")
+            elif lenh == "/xahoi":
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, ban_tin_xa_hoi(p) or f"{nguoi.hoa(x)} chưa lấy được tin xã hội mới nào {g} ơi 📭")
         except Exception as e:
             telegram.goi("sendMessage", chat_id=chat_id,
                          text=f"⚠️ {nguoi.hoa(x)} bị lỗi: {type(e).__name__}: {e}"[:500])
@@ -115,7 +118,7 @@ class handler(BaseHTTPRequestHandler):
             return
         g, x = p["goi"], p["xung"]
         # Lệnh không cần Garmin: tin tức, thực đơn, cân nặng (08/11/2026, đợt 2 Mia cho cả nhà).
-        khong_can_garmin = lenh in ("/thoisu", "/tin", "/thucdon", "/can")
+        khong_can_garmin = lenh in ("/thoisu", "/xahoi", "/tin", "/thucdon", "/can")
         if lenh in ("/start", "/caidat") or (not p["co_garmin"] and not khong_can_garmin):
             telegram.goi("sendMessage", chat_id=chat_id, reply_markup=NUT_MIA, text=(
                 f"Bấm “Mở Mia” để chọn cách {x} gọi {g}, giờ nhận tin sáng/tối và kết nối Garmin nha 👇"
@@ -139,6 +142,9 @@ class handler(BaseHTTPRequestHandler):
             elif lenh == "/tin":
                 telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
                 telegram.gui(chat_id, ban_tin(p) or f"Hôm nay chưa có tin mới nào {g} ơi 📭")
+            elif lenh == "/xahoi":
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, ban_tin_xa_hoi(p) or f"{nguoi.hoa(x)} chưa lấy được tin xã hội mới nào {g} ơi 📭")
             elif lenh == "/thucdon":
                 if not p.get("thuc_don"):
                     telegram.goi("sendMessage", chat_id=chat_id, reply_markup=NUT_MIA,
@@ -149,7 +155,7 @@ class handler(BaseHTTPRequestHandler):
             elif lenh == "/can":
                 telegram.gui(chat_id, can_nang.lenh(text, p))
             else:
-                telegram.gui(chat_id, f"{nguoi.hoa(g)} nhắn /ngu (giấc ngủ), /tongket (tổng kết hôm nay), /thoisu, /tin, "
+                telegram.gui(chat_id, f"{nguoi.hoa(g)} nhắn /ngu (giấc ngủ), /tongket (tổng kết hôm nay), /thoisu, /xahoi, /tin, "
                                       f"/thucdon, /can 60.5 (ghi cân) hoặc /caidat nha.")
         except Exception as e:
             telegram.goi("sendMessage", chat_id=chat_id, text=f"⚠️ {nguoi.hoa(x)} bị lỗi: {type(e).__name__}"[:300])

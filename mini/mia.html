@@ -105,6 +105,7 @@
       <p class="nho">Gửi kèm sau tin giấc ngủ, đúng giờ sáng bạn chọn.</p>
       <div class="chips">
         <button type="button" class="chip" id="tin-thoi-su" aria-pressed="false">🗞 Tin thời sự</button>
+        <button type="button" class="chip" id="tin-xa-hoi" aria-pressed="false">🎭 Xã hội · văn hoá · thể thao</button>
         <button type="button" class="chip" id="tin-cong-nghe" aria-pressed="false">📰 Tin công nghệ</button>
       </div>
     </section>
@@ -176,7 +177,7 @@
       <div class="bao" id="bao-co" hidden></div>
     </section>
 
-    <p class="nho" style="text-align:center">Nhắn /ngu, /tongket, /thoisu, /tin, /thucdon hoặc /can cho Mia để xem ngay bất cứ lúc nào.</p>
+    <p class="nho" style="text-align:center">Nhắn /ngu, /tongket, /thoisu, /xahoi, /tin, /thucdon hoặc /can cho Mia để xem ngay bất cứ lúc nào.</p>
   </div>
 </main>
 
@@ -254,7 +255,7 @@ function chonTrong(nhomId, v) {
 }
 const chonCua = (nhomId) => { const b = document.querySelector(`#${nhomId} .chip[aria-pressed="true"]`); return b ? b.dataset.v : ""; };
 
-["tin-thoi-su", "tin-cong-nghe", "thuc-don-bat"].forEach((id) =>
+["tin-thoi-su", "tin-xa-hoi", "tin-cong-nghe", "thuc-don-bat"].forEach((id) =>
   $(id).onclick = () => { datBat(id, !bat(id)); if (id === "thuc-don-bat") veThucDon(); });
 ["gioi-tinh", "an-sang"].forEach((nhom) =>
   document.querySelectorAll(`#${nhom} .chip`).forEach((b) => b.onclick = () => chonTrong(nhom, b.dataset.v)));
@@ -266,6 +267,7 @@ function veThucDon() {
 
 function veTuyChon() {
   datBat("tin-thoi-su", toi.tin_thoi_su);
+  datBat("tin-xa-hoi", toi.tin_xa_hoi);
   datBat("tin-cong-nghe", toi.tin_cong_nghe);
   datBat("thuc-don-bat", toi.thuc_don);
   chonTrong("gioi-tinh", toi.gioi_tinh || "");
@@ -328,11 +330,11 @@ $("luu").onclick = async () => {
   try {
     toi = { ...toi, ...(await api("luu", { goi: goiChon, xung: $("xung").value,
       gio_sang: +$("gio-sang").value, gio_toi: +$("gio-toi").value,
-      tin_thoi_su: bat("tin-thoi-su"), tin_cong_nghe: bat("tin-cong-nghe"), thuc_don: bat("thuc-don-bat"),
+      tin_thoi_su: bat("tin-thoi-su"), tin_xa_hoi: bat("tin-xa-hoi"), tin_cong_nghe: bat("tin-cong-nghe"), thuc_don: bat("thuc-don-bat"),
       gioi_tinh: chonCua("gioi-tinh"), an_sang: chonCua("an-sang") !== "0",
       cao_cm: $("cao-cm").value || 0, muc_tieu_kg: $("muc-tieu-kg").value || 0, an_uong: $("an-uong").value })) };
     veThucDon();
-    const them = [toi.tin_thoi_su || toi.tin_cong_nghe ? "tin buổi sáng" : "", toi.thuc_don ? "thực đơn lúc 10:00" : ""].filter(Boolean);
+    const them = [toi.tin_thoi_su || toi.tin_xa_hoi || toi.tin_cong_nghe ? "tin buổi sáng" : "", toi.thuc_don ? "thực đơn lúc 10:00" : ""].filter(Boolean);
     bao("bao-luu", `Đã lưu. Mia nhắn ${toi.goi} lúc ${toi.gio_sang}:00 và ${toi.gio_toi}:00 mỗi ngày${them.length ? ", kèm " + them.join(" và ") : ""}.`);
     api("can_xem").then(veCan).catch(() => {});
     tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success");

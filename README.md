@@ -16,13 +16,13 @@ Trang giới thiệu: https://alexvgs.tech/mia · Bot đang chạy: [@miamyworld
 
 - **Sáng (giờ tự chọn 5h–10h):** điểm ngủ, tổng giờ ngủ, sâu / nông / REM, nhịp tim nghỉ, HRV, SpO2,
   nhịp thở, Body Battery hồi, nhiệt độ da; 3–5 dòng AI so với 7 đêm trước và một gợi ý cho hôm nay.
-  Bật thêm thì kèm **tin thời sự** (RSS báo Việt) và/hoặc **tin công nghệ** (nguồn JSON tự cấu hình).
+  Bật thêm thì kèm **tin thời sự** (RSS báo Việt), **tin xã hội · văn hoá · thể thao** (RSS) và/hoặc **tin công nghệ** (nguồn JSON tự cấu hình).
 - **10h:** **thực đơn** theo hồ sơ tự khai (giới tính, chiều cao, cân mục tiêu, có ăn sáng không,
   món thích / kiêng), món Việt nấu ở nhà, có định lượng và calo, không lặp món 7 ngày; calo tự chỉnh
   theo tốc độ giảm cân thật.
 - **Tối (18h–23h):** bước chân so với mục tiêu, calo, phút gắng sức, nhịp tim nghỉ / thấp / cao và giờ
   đạt đỉnh, Body Battery, stress, các buổi tập; AI nhận xét và gợi ý cho tối nay.
-- **Lệnh:** `/ngu` (`/ngu hqua`), `/tongket`, `/thoisu`, `/tin`, `/thucdon`, `/can 60.5` (`/can`,
+- **Lệnh:** `/ngu` (`/ngu hqua`), `/tongket`, `/thoisu`, `/xahoi`, `/tin`, `/thucdon`, `/can 60.5` (`/can`,
   `/can xoa`), `/caidat` (mở Mini App).
 
 Riêng tư: mỗi người chỉ thấy số liệu của mình. Mật khẩu Garmin chỉ dùng một lần để lấy token đọc,
@@ -64,7 +64,7 @@ bản tin đệm) và `mia_nguoi` (người dùng + hồ sơ). Chạy ở máy k
 6. Mở bot, nhắn `/start`, bấm "Mở Mia" để chọn xưng hô, giờ, bật các mục và đăng nhập Garmin
    (Garmin đòi mã xác minh thì nhập ngay trong Mini App).
 
-Thử cron không gửi: `GET /api/cron?dry=1&gio=7` hoặc `?dry=1&loai=trua` với header
+Thử cron không gửi: `GET /api/cron?dry=1&gio=7`, `?dry=1&loai=trua` hoặc `?dry=1&tin=xa-hoi` với header
 `Authorization: Bearer <CRON_SECRET>`.
 
 ## Lưu ý

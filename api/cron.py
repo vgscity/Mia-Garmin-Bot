@@ -3,7 +3,8 @@
 # hôm nay chưa ghi); ai đặt giờ tối = giờ hiện tại thì nhận tổng kết ngày. Riêng chủ bot: tối kèm
 # tình hình game Đấu Trường PC nếu có đặt BAO_CAO_SECRET (phần riêng của VGS).
 # ?loai=trua (0 3 * * * UTC = 10h VN): thực đơn cho mọi người đã bật "thực đơn" trong Mia (bot/thuc_don.py).
-# Thử không gửi: GET /api/cron?dry=1[&gio=7] hoặc ?dry=1&loai=trua kèm Authorization: Bearer <CRON_SECRET>.
+# Thử không gửi: GET /api/cron?dry=1[&gio=7], ?dry=1&loai=trua, hoặc ?dry=1&tin=thoi-su|xa-hoi|cong-nghe
+# kèm Authorization: Bearer <CRON_SECRET>.
 # Người nào lỗi thì người khác vẫn nhận; lỗi Garmin báo cho chính người đó + một dòng cho chủ bot.
 import os
 import re
@@ -19,7 +20,7 @@ from bot import can_nang, nguoi, telegram  # noqa: E402
 from bot import dau_truong  # noqa: E402
 from bot.ngu import VN, bao_cao  # noqa: E402
 from bot.thuc_don import thuc_don  # noqa: E402
-from bot.tin import ban_tin, ban_tin_thoi_su  # noqa: E402
+from bot.tin import ban_tin, ban_tin_thoi_su, ban_tin_xa_hoi  # noqa: E402
 from bot.tong_ket import tong_ket  # noqa: E402
 
 
@@ -43,6 +44,8 @@ def viec_cua(p: dict, gio: int) -> list[tuple[str, callable]]:
             viec.append(("giấc ngủ từ Garmin", lambda: bao_cao_sang(p)))
         if p.get("tin_thoi_su"):
             viec.append(("tin thời sự", lambda: ban_tin_thoi_su(p)))
+        if p.get("tin_xa_hoi"):
+            viec.append(("tin xã hội · văn hoá · thể thao", lambda: ban_tin_xa_hoi(p)))
         if p.get("tin_cong_nghe"):
             viec.append(("tin công nghệ", lambda: ban_tin(p)))
     if p["gio_toi"] == gio:
@@ -96,6 +99,10 @@ class handler(BaseHTTPRequestHandler):
         dry = "dry=1" in path
         if "loai=trua" in path:
             return self._trua(dry)
+        m = re.search(r"tin=(thoi-su|xa-hoi|cong-nghe)", path)
+        if m and dry:  # soạn thử một bản tin cho chủ bot, không gửi
+            ham = {"thoi-su": ban_tin_thoi_su, "xa-hoi": ban_tin_xa_hoi, "cong-nghe": ban_tin}[m.group(1)]
+            return self._tra(200, ham(nguoi.lay(nguoi.chu()) or nguoi._chu()) or "(không có tin)")
         m = re.search(r"gio=(\d+)", path)
         gio = int(m.group(1)) if m else datetime.now(VN).hour
         ds = [p for p in nguoi.tat_ca_duyet() if viec_cua(p, gio)]
