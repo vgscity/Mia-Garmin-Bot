@@ -121,7 +121,22 @@ def tong_ket(ngay: date | None = None, p: dict | None = None) -> str:
             "buoi_tap": buoi,
         }
         try:
+            from . import bua_an
+            an = bua_an.trong_ngay(p, ngay)
+            if an:
+                du_lieu["bua_an_chup_anh"] = an
+        except Exception as e:
+            print(f"Đọc bữa ăn lỗi: {type(e).__name__}")
+        try:
             nhan_xet = ai.tong_ket_ngay(du_lieu, p)
         except Exception as e:
             print(f"AI tổng kết lỗi: {type(e).__name__}: {e}")
-    return soan_tin(s, buoi, dinh, ngay, nhan_xet, p)
+    text = soan_tin(s, buoi, dinh, ngay, nhan_xet, p)
+    try:
+        from . import bua_an
+        dong = bua_an.dong_tong(p, ngay)
+        if dong:
+            text += "\n" + dong
+    except Exception as e:
+        print(f"Dòng bữa ăn lỗi: {type(e).__name__}")
+    return text

@@ -22,7 +22,16 @@ Trang giới thiệu: https://alexvgs.tech/mia · Bot đang chạy: [@miamyworld
   theo tốc độ giảm cân thật.
 - **Tối (18h–23h):** bước chân so với mục tiêu, calo, phút gắng sức, nhịp tim nghỉ / thấp / cao và giờ
   đạt đỉnh, Body Battery, stress, các buổi tập; AI nhận xét và gợi ý cho tối nay.
-- **Lệnh:** `/ngu` (`/ngu hqua`), `/tongket`, `/thoisu`, `/xahoi`, `/tin`, `/thucdon`, `/can 60.5` (`/can`,
+- **Hỏi gì đáp nấy:** nhắn tự do ("tuần này mình ngủ đủ không?", "hôm qua chạy bộ tim lên bao nhiêu?"), Mia tự
+  đọc số Garmin, sổ cân, bữa ăn của chính người hỏi rồi trả lời (Claude + tool use). Tối đa `HOI_MOI_NGAY` câu/ngày.
+- **Ảnh bữa ăn:** gửi ảnh, Mia đoán món, lượng, calo, đạm, cộng vào ngày và đưa vào tổng kết tối. Tối đa `ANH_MOI_NGAY` ảnh/ngày.
+- **Tin sáng có thêm** (nếu đồng hồ / cân có dữ liệu): chỉ số tập luyện (sẵn sàng tập, VO2max, trạng thái), cân tự động từ
+  cân Garmin Index, nhắc nhẹ khi số lệch nhiều ngày (ngủ dưới 6 tiếng, nhịp tim nghỉ tăng, HRV tụt), một dòng thời tiết
+  (Open-Meteo) nếu bật. **Chủ nhật** kèm tổng kết tuần (`/tuan` để xem bất cứ lúc nào).
+- **Nhắc vận động 17h** nếu bật và chưa được nửa mục tiêu bước.
+- **Người nhà trông nhau:** người cho xem tạo mã trong Mini App, người xem nhập mã; mỗi sáng người xem nhận một dòng tóm tắt
+  (ngủ ổn không, đồng hồ có đồng bộ không). Một bên bỏ là thôi.
+- **Lệnh:** `/ngu` (`/ngu hqua`), `/tongket`, `/tuan`, `/thoisu`, `/xahoi`, `/tin`, `/thucdon`, `/can 60.5` (`/can`,
   `/can xoa`), `/caidat` (mở Mini App).
 
 Riêng tư: mỗi người chỉ thấy số liệu của mình. Mật khẩu Garmin chỉ dùng một lần để lấy token đọc,

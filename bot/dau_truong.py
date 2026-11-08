@@ -133,7 +133,7 @@ def bao_cao_game(ngay: date | None = None, p: dict | None = None) -> str:
         q = None
     nhan_xet = None
     try:
-        nhan_xet = ai.goi_ai(ai._xung(SYSTEM, p), {"hom_nay": _cho_ai(d), "hom_qua": _cho_ai(q)}, max_tokens=800)
+        nhan_xet = ai.goi_ai(ai._xung(SYSTEM, p), {"hom_nay": _cho_ai(d), "hom_qua": _cho_ai(q)}, max_tokens=4000)
     except Exception as e:
         print(f"AI nhận xét game lỗi: {type(e).__name__}: {e}")
     return soan_tin(d, q, ngay, nhan_xet, p)

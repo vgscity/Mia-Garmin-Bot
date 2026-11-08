@@ -45,7 +45,7 @@ def schema_chuan(s: dict) -> dict:
     return ra
 
 
-def goi_ai(system: str, du_lieu, *, max_tokens: int = 1024, schema: dict | None = None) -> str:
+def goi_ai(system: str, du_lieu, *, max_tokens: int = 4000, schema: dict | None = None) -> str:
     """Gửi system + dữ liệu (JSON) cho Claude, trả về chữ (hoặc chuỗi JSON đúng schema nếu có schema)."""
     output_config: dict = {"effort": EFFORT}
     if schema:
@@ -90,7 +90,8 @@ Luôn gọi người đọc là "{goi}", xưng "{xung}". Giọng ấm áp, gần
 Viết 3–5 gạch đầu dòng, mỗi dòng bắt đầu bằng "• ", mỗi dòng 1–2 câu ngắn:
 - So đêm qua với trung bình các đêm trước (giờ ngủ, điểm, sâu/REM, HRV, nhịp tim nghỉ, Body Battery). Chỉ nêu điều đáng chú ý, có con số cụ thể.
 - Giờ lên giường có đều không so với các đêm trước.
-- Dòng cuối: MỘT gợi ý cụ thể cho hôm nay hoặc tối nay.
+- Dòng cuối: MỘT gợi ý cụ thể cho hôm nay hoặc tối nay. Nếu có "chi_so_tap" (sẵn sàng tập, VO2max, trạng thái tập)
+  thì gợi ý dựa thêm vào đó: hôm nay nên tập nặng, tập nhẹ hay nghỉ.
 
 Quy tắc:
 - Thời lượng trên 60 phút viết dạng "7 tiếng 46 phút", đừng viết "466 phút".
@@ -107,7 +108,7 @@ def _xung(system: str, p: dict | None) -> str:
 
 
 def phan_tich(du_lieu: dict, p: dict | None = None) -> str:
-    return goi_ai(_xung(SYSTEM, p), du_lieu, max_tokens=1024)
+    return goi_ai(_xung(SYSTEM, p), du_lieu, max_tokens=6000)
 
 
 SYSTEM_TOI = """Bạn là Mia, trợ lý quan tâm sức khoẻ của {goi}, đọc số liệu cả ngày hôm nay từ đồng hồ Garmin của {goi}.
@@ -118,6 +119,7 @@ Viết 3–5 gạch đầu dòng, mỗi dòng bắt đầu bằng "• ", mỗi 
 - Nhịp tim: nhịp tim nghỉ so với trung bình 7 ngày, nhịp cao nhất cả ngày rơi vào lúc nào (thường là lúc tập), thời gian ở vùng tim cao.
   Lưu ý: "nhip_tim_cao_nhat_ca_ngay" (bpm + giờ) và "nhip_tim_max" của từng buổi tập là hai số đo khác nhau, đừng ghép số của cái này với giờ của cái kia.
 - Mức năng lượng: Body Battery tụt từ bao nhiêu xuống bao nhiêu, stress.
+- Nếu có "bua_an_chup_anh" (calo ước từ ảnh) thì so nhanh ăn vào với calo đốt, nhắc đó chỉ là ước lượng.
 - Dòng cuối: MỘT gợi ý cụ thể cho tối nay / ngày mai (ngủ sớm, uống nước, giãn cơ, nghỉ ngơi...) dựa đúng vào số liệu.
 
 Quy tắc:
@@ -128,4 +130,46 @@ Quy tắc:
 
 
 def tong_ket_ngay(du_lieu: dict, p: dict | None = None) -> str:
-    return goi_ai(_xung(SYSTEM_TOI, p), du_lieu, max_tokens=1024)
+    return goi_ai(_xung(SYSTEM_TOI, p), du_lieu, max_tokens=6000)
+
+
+def goi_ai_noi_dung(system: str, noi_dung: list, *, max_tokens: int = 1024, schema: dict | None = None) -> str:
+    """Như goi_ai nhưng tự đưa khối nội dung (ảnh + chữ) — dùng cho ảnh bữa ăn."""
+    output_config: dict = {"effort": EFFORT}
+    if schema:
+        output_config["format"] = {"type": "json_schema", "schema": schema_chuan(schema)}
+    try:
+        r = _khach().beta.messages.create(
+            model=MODEL, max_tokens=max_tokens, system=system,
+            messages=[{"role": "user", "content": noi_dung}],
+            output_config=output_config,
+            betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+        )
+    except anthropic.APIStatusError as e:
+        raise RuntimeError(f"Claude lỗi {e.status_code}: {e.message}"[:300]) from e
+    except anthropic.APIConnectionError as e:
+        raise RuntimeError(f"Không nối được Claude: {type(e).__name__}") from e
+    if r.stop_reason == "refusal":
+        raise RuntimeError("Claude từ chối trả lời")
+    text = "".join(b.text for b in r.content if b.type == "text").strip()
+    if not text:
+        raise RuntimeError("Claude không trả về nội dung")
+    return text
+
+
+def chay_cong_cu(system: str, messages: list, tools: list, *, max_tokens: int = 8000, so_vong: int = 8) -> str:
+    """Hỏi đáp có công cụ: SDK tool runner tự gọi các hàm @beta_tool rồi đưa kết quả lại cho Claude."""
+    try:
+        runner = _khach().beta.messages.tool_runner(
+            model=MODEL, max_tokens=max_tokens, system=system, tools=tools, messages=messages,
+            output_config={"effort": EFFORT}, max_iterations=so_vong,
+            betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+        )
+        cuoi = runner.until_done()
+    except anthropic.APIStatusError as e:
+        raise RuntimeError(f"Claude lỗi {e.status_code}: {e.message}"[:300]) from e
+    except anthropic.APIConnectionError as e:
+        raise RuntimeError(f"Không nối được Claude: {type(e).__name__}") from e
+    if cuoi.stop_reason == "refusal":
+        raise RuntimeError("Claude từ chối trả lời")
+    return "".join(b.text for b in cuoi.content if b.type == "text").strip()

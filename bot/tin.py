@@ -163,7 +163,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
                   "nguon": b.get("source")} for i, b in enumerate(bai)]
     chon = []
     for i in _json_ai(SYSTEM_CHON.format(chu_de=chu_de, so_tin=so_tin, uu_tien=uu_tien),
-                          danh_sach, SCHEMA_CHON, 256):
+                          danh_sach, SCHEMA_CHON, 3000):
         if isinstance(i, int) and 0 <= i < len(bai) and i not in chon:
             chon.append(i)
     chon = chon[:7]
@@ -175,7 +175,7 @@ def _soan(bai: list[dict], chu_de: str, uu_tien: str, tieu_de: str, cuoi: str | 
         noi_dung = list(pool.map(lambda i: noi_dung_bai(bai[i]["url"]), chon))
     dau_vao = [{"i": i, "tieu_de": bai[i].get("title"), "nguon": bai[i].get("source"),
                 "noi_dung": nd or bai[i].get("digest")} for i, nd in zip(chon, noi_dung)]
-    ke = _json_ai(SYSTEM_KE.format(chu_de=chu_de, goi=p["goi"], xung=p["xung"]), dau_vao, SCHEMA_KE, 4096)
+    ke = _json_ai(SYSTEM_KE.format(chu_de=chu_de, goi=p["goi"], xung=p["xung"]), dau_vao, SCHEMA_KE, 10000)
 
     hom_nay = datetime.now(VN)
     dong = [f"{tieu_de} sáng {THU[hom_nay.weekday()]}, {hom_nay:%d/%m}</b>", ""]

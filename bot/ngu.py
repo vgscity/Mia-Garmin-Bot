@@ -174,16 +174,41 @@ def du_lieu_cho_ai(data: dict, lich_su: list[dict], ngay: date) -> dict:
     return {"dem_qua": dem_qua, "cac_dem_truoc": cac_dem_truoc}
 
 
-def bao_cao(ngay: date | None = None, p: dict | None = None) -> str:
+def bao_cao(ngay: date | None = None, p: dict | None = None, them: bool = True) -> str:
+    """Tin giấc ngủ. them=True (mặc định, 08/11/2026) thì kèm chỉ số tập luyện, nhắc nhẹ khi số lệch
+    nhiều ngày liền, và tự ghi cân nếu có cân Garmin Index — phần nào không có dữ liệu thì bỏ."""
+    from . import can_nang, canh_bao, garmin_them
+
     p = p or nguoi._chu()
     ngay = ngay or hom_nay_vn()
     g = ket_noi(p["id"])
     data = lay_giac_ngu(g, ngay)
-    nhan_xet = None
+    cs = garmin_them.chi_so_tap(g, ngay) if them else {}
+    nhan_xet, lich_su = None, []
     if (data.get("dailySleepDTO") or {}).get("sleepTimeSeconds"):
         try:
-            lich_su = g.get_sleep_daily((ngay - timedelta(days=7)).isoformat(), ngay.isoformat())
-            nhan_xet = ai.phan_tich(du_lieu_cho_ai(data, lich_su, ngay), p)
+            lich_su = g.get_sleep_daily((ngay - timedelta(days=7)).isoformat(), ngay.isoformat()) or []
+        except Exception as e:
+            print(f"Lịch sử giấc ngủ lỗi: {type(e).__name__}: {e}")
+        try:
+            du = du_lieu_cho_ai(data, lich_su, ngay)
+            if cs:
+                du["chi_so_tap"] = cs
+            nhan_xet = ai.phan_tich(du, p)
         except Exception as e:  # AI hỏng thì vẫn gửi số liệu
             print(f"AI phân tích lỗi: {type(e).__name__}: {e}")
-    return soan_tin(data, ngay, nhan_xet, p)
+    text = soan_tin(data, ngay, nhan_xet, p)
+    if not them:
+        return text
+    them_dong = []
+    dong = garmin_them.dong_chi_so(cs)
+    if dong:
+        them_dong.append(dong)
+    if ngay == hom_nay_vn():
+        kg = garmin_them.can_hom_nay(g, ngay)
+        if kg and can_nang.ghi_tu_dong(p, kg):
+            them_dong.append(f"⚖️ Cân sáng nay {kg:g} kg (lấy từ cân Garmin)")
+    nhac = canh_bao.canh_bao(lich_su, p)
+    if nhac:
+        them_dong += [""] + [f"🫶 {escape(c)}" for c in nhac]
+    return text + ("\n\n" + "\n".join(them_dong) if them_dong else "")

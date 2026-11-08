@@ -5,6 +5,8 @@
 # ?loai=trua (0 3 * * * UTC = 10h VN): thực đơn cho mọi người đã bật "thực đơn" trong Mia (bot/thuc_don.py).
 # Thử không gửi: GET /api/cron?dry=1[&gio=7], ?dry=1&loai=trua, hoặc ?dry=1&tin=thoi-su|xa-hoi|cong-nghe
 # kèm Authorization: Bearer <CRON_SECRET>.
+# Đợt 3 (08/11/2026): tin sáng kèm dòng thời tiết (nếu bật), Chủ nhật thêm tổng kết tuần, thêm tin "người nhà"
+# cho ai đang xem người nhà; 17h nhắc vận động cho ai bật mà chưa được nửa mục tiêu bước.
 # Người nào lỗi thì người khác vẫn nhận; lỗi Garmin báo cho chính người đó + một dòng cho chủ bot.
 import os
 import re
@@ -17,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bot import can_nang, nguoi, telegram  # noqa: E402
-from bot import dau_truong  # noqa: E402
+from bot import dau_truong, nguoi_nha, thoi_tiet, tuan, van_dong  # noqa: E402
 from bot.ngu import VN, bao_cao  # noqa: E402
 from bot.thuc_don import thuc_don  # noqa: E402
 from bot.tin import ban_tin, ban_tin_thoi_su, ban_tin_xa_hoi  # noqa: E402
@@ -26,6 +28,9 @@ from bot.tong_ket import tong_ket  # noqa: E402
 
 def bao_cao_sang(p: dict) -> str:
     text = bao_cao(p=p)
+    tt = thoi_tiet.dong_thoi_tiet(p)
+    if tt:
+        text += "\n\n" + tt
     try:
         if can_nang.muc_tieu(p) and not can_nang.da_can_hom_nay(p):
             g, x = p["goi"], p["xung"]
@@ -42,12 +47,19 @@ def viec_cua(p: dict, gio: int) -> list[tuple[str, callable]]:
     if p["gio_sang"] == gio:
         if p["co_garmin"]:
             viec.append(("giấc ngủ từ Garmin", lambda: bao_cao_sang(p)))
+            if p.get("tong_ket_tuan") and datetime.now(VN).weekday() == 6:
+                viec.append(("tổng kết tuần từ Garmin", lambda: tuan.tong_ket_tuan(p)))
+        elif p.get("thoi_tiet"):
+            viec.append(("thời tiết", lambda: thoi_tiet.dong_thoi_tiet(p)))
+        viec.append(("tin người nhà", lambda: nguoi_nha.tin_sang(p)))
         if p.get("tin_thoi_su"):
             viec.append(("tin thời sự", lambda: ban_tin_thoi_su(p)))
         if p.get("tin_xa_hoi"):
             viec.append(("tin xã hội · văn hoá · thể thao", lambda: ban_tin_xa_hoi(p)))
         if p.get("tin_cong_nghe"):
             viec.append(("tin công nghệ", lambda: ban_tin(p)))
+    if gio == van_dong.GIO_NHAC and p["co_garmin"] and p.get("nhac_van_dong"):
+        viec.append(("nhắc vận động", lambda: van_dong.nhac(p)))
     if p["gio_toi"] == gio:
         if p["co_garmin"]:
             viec.append(("tổng kết ngày từ Garmin", lambda: tong_ket(p=p)))

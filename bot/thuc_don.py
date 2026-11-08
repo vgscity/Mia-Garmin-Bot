@@ -159,7 +159,7 @@ def thuc_don(luu: bool = True, p: dict | None = None) -> str:
     schema = _schema(an_sang)
     bua_keys = ["sang", "trua", "toi"] if an_sang else ["trua", "toi"]
     for _ in range(3):  # AI hay soạn thiếu calo/đạm — lệch thì bắt soạn lại
-        td = json.loads(ai.goi_ai(system, du_lieu, max_tokens=4096, schema=schema))
+        td = json.loads(ai.goi_ai(system, du_lieu, max_tokens=8000, schema=schema))
         tong = sum(td[k]["kcal"] for k in bua_keys)
         dam = sum(td[k]["dam_g"] for k in bua_keys)
         if kcal_min - 100 <= tong <= kcal_max + 100 and dam >= dam_min:

@@ -166,6 +166,15 @@ def tien_do(ds: list[dict] | None = None, p: dict | None = None) -> str:
     return "\n".join(dong)
 
 
+def ghi_tu_dong(p: dict, kg: float) -> bool:
+    """Ghi số từ cân Garmin nếu hôm nay chưa có số nào (không đè số người dùng tự ghi). Trả True nếu đã ghi."""
+    if da_can_hom_nay(p):
+        return False
+    hom_nay = hom_nay_vn().isoformat()
+    _ghi(p, _da_luu(p) + [{"ngay": hom_nay, "kg": round(kg, 1)}])
+    return True
+
+
 def ghi_can(kg: float, p: dict | None = None) -> str:
     p = _p(p)
     g, x = p["goi"], p["xung"]

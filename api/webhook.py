@@ -4,7 +4,8 @@
 # Lệnh: /ngu = báo giấc ngủ đêm qua, /ngu hqua = đêm trước nữa, /thoisu = tin thời sự, /xahoi = xã hội · văn hoá · thể thao, /tin = tin công nghệ,
 # /tongket = tổng kết vận động + nhịp tim hôm nay, /thucdon = thực đơn hôm nay,
 # /can 75.2 = ghi cân (/can: xem tiến độ, /can xoa: xoá số hôm nay),
-# /game = tình hình Đấu Trường PC (chỉ chủ bot, khi có BAO_CAO_SECRET).
+# /tuan = tổng kết tuần, /game = tình hình Đấu Trường PC (chỉ chủ bot, khi có BAO_CAO_SECRET).
+# Tin nhắn thường (không phải lệnh) → hỏi đáp tự do (bot/hoi_dap.py); gửi ảnh → đoán bữa ăn (bot/bua_an.py).
 import json
 import os
 import sys
@@ -14,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bot import can_nang, dau_truong, nguoi, telegram  # noqa: E402
+from bot import bua_an, can_nang, dau_truong, hoi_dap, nguoi, telegram, tuan  # noqa: E402
 from bot.nguoi import bao_ba_duyet, ten_cua  # noqa: E402
 from bot.ngu import bao_cao, hom_nay_vn  # noqa: E402
 from bot.tin import ban_tin, ban_tin_thoi_su, ban_tin_xa_hoi  # noqa: E402
@@ -32,7 +33,8 @@ def chao_chu(p: dict) -> str:
     chu += " và tình hình game Đấu Trường PC" if dau_truong.co_cau_hinh() else ""
     chu += (f". Giờ sáng/tối và các mục bật/tắt {g} đổi trong /caidat.\n"
             f"{nguoi.hoa(g)} nhắn /ngu để xem giấc ngủ ngay (/ngu hqua: đêm trước), /thoisu, /xahoi và /tin để đọc tin, "
-            f"/tongket để xem tổng kết hôm nay, /thucdon để xem thực đơn, /can 75.2 để ghi cân")
+            f"/tongket để xem tổng kết hôm nay, /tuan để xem tổng kết tuần, /thucdon để xem thực đơn, /can 75.2 để ghi cân. "
+            f"Cứ nhắn hỏi tự do (\"tuần này {g} ngủ đủ không?\") hoặc gửi ảnh bữa ăn để {x} đoán calo")
     chu += ", /game để xem game hôm nay (/game hqua: hôm qua)." if dau_truong.co_cau_hinh() else "."
     return chu
 
@@ -52,6 +54,9 @@ class handler(BaseHTTPRequestHandler):
         chat_id = chat.get("id")
         text = (msg.get("text") or "").strip()
         if not chat_id or chat.get("type") != "private":
+            return self._ok()
+        if msg.get("photo") or (msg.get("document") or {}).get("mime_type", "").startswith("image/"):
+            self._anh(chat_id, msg)
             return self._ok()
         lenh = text.split("@")[0].split()[0].lower() if text else ""
         if not nguoi.la_chu(chat_id):
@@ -97,6 +102,12 @@ class handler(BaseHTTPRequestHandler):
             elif lenh == "/xahoi":
                 telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
                 telegram.gui(chat_id, ban_tin_xa_hoi(p) or f"{nguoi.hoa(x)} chưa lấy được tin xã hội mới nào {g} ơi 📭")
+            elif lenh == "/tuan":
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, tuan.tong_ket_tuan(p))
+            elif text and not text.startswith("/"):
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, hoi_dap.tra_loi(p, text))
         except Exception as e:
             telegram.goi("sendMessage", chat_id=chat_id,
                          text=f"⚠️ {nguoi.hoa(x)} bị lỗi: {type(e).__name__}: {e}"[:500])
@@ -123,7 +134,7 @@ class handler(BaseHTTPRequestHandler):
             return
         g, x = p["goi"], p["xung"]
         # Lệnh không cần Garmin: tin tức, thực đơn, cân nặng (08/11/2026, đợt 2 Mia cho cả nhà).
-        khong_can_garmin = lenh in ("/thoisu", "/xahoi", "/tin", "/thucdon", "/can")
+        khong_can_garmin = lenh in ("/thoisu", "/xahoi", "/tin", "/thucdon", "/can") or (text and not text.startswith("/"))
         if lenh in ("/start", "/caidat") or (not p["co_garmin"] and not khong_can_garmin):
             telegram.goi("sendMessage", chat_id=chat_id, reply_markup=NUT_MIA, text=(
                 f"Bấm “Mở Mia” để chọn cách {x} gọi {g}, giờ nhận tin sáng/tối và kết nối Garmin nha 👇"
@@ -159,11 +170,33 @@ class handler(BaseHTTPRequestHandler):
                     telegram.gui(chat_id, thuc_don(p=p))
             elif lenh == "/can":
                 telegram.gui(chat_id, can_nang.lenh(text, p))
+            elif lenh == "/tuan" and p["co_garmin"]:
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, tuan.tong_ket_tuan(p))
+            elif text and not text.startswith("/"):
+                telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+                telegram.gui(chat_id, hoi_dap.tra_loi(p, text))
             else:
-                telegram.gui(chat_id, f"{nguoi.hoa(g)} nhắn /ngu (giấc ngủ), /tongket (tổng kết hôm nay), /thoisu, /xahoi, /tin, "
-                                      f"/thucdon, /can 60.5 (ghi cân) hoặc /caidat nha.")
+                telegram.gui(chat_id, f"{nguoi.hoa(g)} nhắn /ngu (giấc ngủ), /tongket (tổng kết hôm nay), /tuan, /thoisu, /xahoi, /tin, "
+                                      f"/thucdon, /can 60.5 (ghi cân) hoặc /caidat nha. Cứ hỏi tự do hay gửi ảnh bữa ăn cũng được.")
         except Exception as e:
             telegram.goi("sendMessage", chat_id=chat_id, text=f"⚠️ {nguoi.hoa(x)} bị lỗi: {type(e).__name__}"[:300])
+
+    def _anh(self, chat_id, msg: dict):
+        p = nguoi.lay(chat_id)
+        if not p or p["trang_thai"] != "duyet":
+            return
+        if msg.get("photo"):
+            file_id = max(msg["photo"], key=lambda a: a.get("file_size") or 0)["file_id"]
+        else:
+            file_id = msg["document"]["file_id"]
+        try:
+            telegram.goi("sendChatAction", chat_id=chat_id, action="typing")
+            telegram.gui(chat_id, bua_an.xu_ly_anh(p, file_id, msg.get("caption") or ""))
+        except Exception as e:
+            print(f"Ảnh bữa ăn lỗi: {type(e).__name__}: {e}")
+            telegram.goi("sendMessage", chat_id=chat_id,
+                         text=f"⚠️ {nguoi.hoa(p['xung'])} chưa đọc được ảnh này, {p['goi']} gửi lại giúp nha.")
 
     def _nut(self, cq: dict):
         data = cq.get("data") or ""

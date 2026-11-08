@@ -5,6 +5,8 @@
 #                 gioi_tinh, cao_cm, muc_tieu_kg, an_sang, an_uong — thiếu trường nào thì giữ nguyên)
 #   hd=can      → kg: ghi cân hôm nay; hd=can_xem → sổ cân + tiến độ; hd=can_xoa → xoá số hôm nay
 #   hd=thucdon  → soạn và gửi thực đơn hôm nay ngay (đã bật thực đơn)
+#   hd=nha_ds / nha_tao_ma / nha_nhap (ma, nhan) / nha_bo (khac, chieu=xem|cho) → người nhà trông nhau (bot/nguoi_nha.py)
+#   luu còn nhận: thoi_tiet, vi_do, kinh_do, noi, nhac_van_dong, tong_ket_tuan (đợt 3, 08/11/2026)
 #   hd=garmin   → email, mat_khau: đăng nhập Garmin. Garmin đòi MFA thì request này GIỮ kết nối,
 #                 ghi garmin_kv mfa:<id>='can', chờ hd=ma ghi mã vào (tối đa ~4 phút) rồi đăng nhập nốt.
 #                 Thư viện giữ phiên MFA trong bộ nhớ nên không tách ra hai lượt gọi được.
@@ -25,7 +27,7 @@ from urllib.parse import parse_qsl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from bot import can_nang, kho, nguoi, telegram  # noqa: E402
+from bot import can_nang, kho, nguoi, nguoi_nha, telegram  # noqa: E402
 from bot.nguoi import bao_ba_duyet, ten_cua  # noqa: E402
 from bot.thuc_don import thuc_don  # noqa: E402
 
@@ -123,7 +125,7 @@ class handler(BaseHTTPRequestHandler):
                 if not goi or not xung or gs not in nguoi.GIO_SANG or gt not in nguoi.GIO_TOI:
                     return self._json(400, {"loi": "Thiếu cách xưng hô hoặc giờ chưa hợp lệ."})
                 cap = {"goi": goi, "xung": xung, "gio_sang": gs, "gio_toi": gt}
-                for k in ("tin_thoi_su", "tin_xa_hoi", "tin_cong_nghe", "thuc_don", "an_sang"):
+                for k in ("tin_thoi_su", "tin_xa_hoi", "tin_cong_nghe", "thuc_don", "an_sang", "thoi_tiet", "nhac_van_dong", "tong_ket_tuan"):
                     if k in body:
                         cap[k] = 1 if body.get(k) else 0
                 if "gioi_tinh" in body:
@@ -143,6 +145,12 @@ class handler(BaseHTTPRequestHandler):
                     cap["muc_tieu_kg"] = mt
                 if "an_uong" in body:
                     cap["an_uong"] = str(body.get("an_uong") or "").strip()[:200]
+                if "vi_do" in body and "kinh_do" in body:
+                    vd, kd = float(body.get("vi_do") or 0), float(body.get("kinh_do") or 0)
+                    if (vd or kd) and not (-90 <= vd <= 90 and -180 <= kd <= 180):
+                        return self._json(400, {"loi": "Vị trí chưa hợp lệ."})
+                    cap["vi_do"], cap["kinh_do"] = round(vd, 3), round(kd, 3)
+                    cap["noi"] = str(body.get("noi") or "").strip()[:40]
                 return self._json(200, self._cong_khai(nguoi.sua(id_, **cap)))
 
             if hd == "can":
@@ -156,6 +164,24 @@ class handler(BaseHTTPRequestHandler):
 
             if hd == "can_xoa":
                 return self._json(200, {"chu": can_nang.xoa_hom_nay(p), **self._so_can(p)})
+
+            if hd == "nha_ds":
+                return self._json(200, {"dang_xem": nguoi_nha.dang_xem(id_), "cho_xem": nguoi_nha.cho_xem(id_)})
+
+            if hd == "nha_tao_ma":
+                return self._json(200, {"ma": nguoi_nha.tao_ma(id_), "gio": nguoi_nha.SONG_MA // 3600})
+
+            if hd == "nha_nhap":
+                try:
+                    nguoi_nha.nhap_ma(id_, str(body.get("ma") or ""), str(body.get("nhan") or ""))
+                except ValueError as e:
+                    return self._json(400, {"loi": str(e)})
+                return self._json(200, {"dang_xem": nguoi_nha.dang_xem(id_), "cho_xem": nguoi_nha.cho_xem(id_)})
+
+            if hd == "nha_bo":
+                chieu = "xem" if body.get("chieu") == "xem" else "cho"
+                nguoi_nha.bo(id_, str(body.get("khac") or ""), chieu)
+                return self._json(200, {"dang_xem": nguoi_nha.dang_xem(id_), "cho_xem": nguoi_nha.cho_xem(id_)})
 
             if hd == "thucdon":
                 if not p.get("thuc_don"):

@@ -23,8 +23,9 @@ GIO_SANG = range(5, 11)   # 5h–10h
 GIO_TOI = range(18, 24)   # 18h–23h
 COT = ("id", "ten", "goi", "xung", "gio_sang", "gio_toi", "trang_thai", "co_garmin",
        "tin_thoi_su", "tin_cong_nghe", "thuc_don", "gioi_tinh", "cao_cm", "muc_tieu_kg", "an_sang", "an_uong",
-       "tin_xa_hoi")
-COT_SO = ("gio_sang", "gio_toi", "co_garmin", "tin_thoi_su", "tin_cong_nghe", "thuc_don", "cao_cm", "an_sang", "tin_xa_hoi")
+       "tin_xa_hoi", "thoi_tiet", "vi_do", "kinh_do", "noi", "nhac_van_dong", "tong_ket_tuan")
+COT_SO = ("gio_sang", "gio_toi", "co_garmin", "tin_thoi_su", "tin_cong_nghe", "thuc_don", "cao_cm", "an_sang", "tin_xa_hoi",
+          "thoi_tiet", "nhac_van_dong", "tong_ket_tuan")
 # Cột thêm sau khi bảng đã có — (tên, khai báo SQL). Thứ tự ổn định để ALTER từng cái.
 COT_MOI = (
     ("tin_thoi_su", "INTEGER NOT NULL DEFAULT 0"),
@@ -36,9 +37,17 @@ COT_MOI = (
     ("an_sang", "INTEGER NOT NULL DEFAULT 1"),
     ("an_uong", "TEXT NOT NULL DEFAULT ''"),
     ("tin_xa_hoi", "INTEGER NOT NULL DEFAULT 0"),
+    # Đợt 3 (08/11/2026): thời tiết sáng (toạ độ + tên nơi), nhắc vận động 17h, tổng kết tuần Chủ nhật.
+    ("thoi_tiet", "INTEGER NOT NULL DEFAULT 0"),
+    ("vi_do", "REAL NOT NULL DEFAULT 0"),
+    ("kinh_do", "REAL NOT NULL DEFAULT 0"),
+    ("noi", "TEXT NOT NULL DEFAULT ''"),
+    ("nhac_van_dong", "INTEGER NOT NULL DEFAULT 0"),
+    ("tong_ket_tuan", "INTEGER NOT NULL DEFAULT 1"),
 )
 HO_SO_MAC_DINH = {"tin_thoi_su": 1, "tin_cong_nghe": 0, "thuc_don": 0, "gioi_tinh": "", "cao_cm": 0,
-                  "muc_tieu_kg": 0.0, "an_sang": 1, "an_uong": "", "tin_xa_hoi": 0}
+                  "muc_tieu_kg": 0.0, "an_sang": 1, "an_uong": "", "tin_xa_hoi": 0,
+                  "thoi_tiet": 0, "vi_do": 0.0, "kinh_do": 0.0, "noi": "", "nhac_van_dong": 0, "tong_ket_tuan": 1}
 # Trường chỉ có ở hồ sơ chủ (không phải cột bảng), dùng cho thực đơn.
 HO_SO_THEM = ("kcal_min", "kcal_max", "dam_min", "dam_uu_tien")
 
@@ -77,7 +86,10 @@ def ho_so_chu() -> dict:
         if them.get(k):
             ho_so[k] = them[k]
     ho_so["muc_tieu_kg"] = float(ho_so["muc_tieu_kg"] or 0)
-    for k in ("tin_thoi_su", "tin_cong_nghe", "thuc_don", "cao_cm", "an_sang", "tin_xa_hoi"):
+    ho_so["vi_do"] = float(ho_so["vi_do"] or 0)
+    ho_so["kinh_do"] = float(ho_so["kinh_do"] or 0)
+    for k in ("tin_thoi_su", "tin_cong_nghe", "thuc_don", "cao_cm", "an_sang", "tin_xa_hoi", "thoi_tiet",
+              "nhac_van_dong", "tong_ket_tuan"):
         ho_so[k] = int(ho_so[k] or 0)
     return ho_so
 
@@ -127,6 +139,9 @@ def _dong(row) -> dict:
     for k in COT_SO:
         d[k] = int(float(d[k] or 0))
     d["muc_tieu_kg"] = float(d["muc_tieu_kg"] or 0)
+    d["vi_do"] = float(d["vi_do"] or 0)
+    d["kinh_do"] = float(d["kinh_do"] or 0)
+    d["noi"] = d["noi"] or ""
     d["gioi_tinh"] = d["gioi_tinh"] or ""
     d["an_uong"] = d["an_uong"] or ""
     return d

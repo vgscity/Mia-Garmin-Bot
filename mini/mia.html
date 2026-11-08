@@ -107,7 +107,18 @@
         <button type="button" class="chip" id="tin-thoi-su" aria-pressed="false">🗞 Tin thời sự</button>
         <button type="button" class="chip" id="tin-xa-hoi" aria-pressed="false">🎭 Xã hội · văn hoá · thể thao</button>
         <button type="button" class="chip" id="tin-cong-nghe" aria-pressed="false">📰 Tin công nghệ</button>
+        <button type="button" class="chip" id="thoi-tiet" aria-pressed="false">🌤 Thời tiết</button>
+        <button type="button" class="chip" id="tong-ket-tuan" aria-pressed="false">📅 Tổng kết tuần (Chủ nhật)</button>
+        <button type="button" class="chip" id="nhac-van-dong" aria-pressed="false">🚶 Nhắc vận động lúc 17:00</button>
       </div>
+      <div id="khung-noi" hidden style="display:grid;gap:8px">
+        <div class="hang">
+          <label for="noi">Thời tiết ở</label>
+          <select id="noi"></select>
+        </div>
+        <button type="button" class="nut phu-nut" id="vi-tri">📍 Dùng vị trí hiện tại</button>
+      </div>
+      <p class="nho">Nhắc vận động chỉ nhắn khi tới 17:00 mà bạn chưa đi được nửa mục tiêu bước.</p>
     </section>
 
     <section>
@@ -155,6 +166,20 @@
       <p class="nho">Có mục tiêu thì Mia tính tốc độ, ngày về đích và chỉnh calo thực đơn theo. Nhắn /can 60.5 cho Mia cũng được.</p>
     </section>
 
+    <section>
+      <h2>Người nhà</h2>
+      <p class="nho">Cho người nhà nhận một dòng tóm tắt mỗi sáng: bạn ngủ ổn không, đồng hồ có đồng bộ không (hết pin hay quên đeo). Chỉ tóm tắt, không có số chi tiết. Cần cả hai bên đồng ý, bỏ lúc nào cũng được.</p>
+      <button type="button" class="nut phu-nut" id="nha-tao">Tạo mã cho người nhà xem mình</button>
+      <div class="bao" id="nha-ma" hidden></div>
+      <div class="hang">
+        <label><input id="nha-nhap-ma" placeholder="Mã của người nhà" maxlength="6" autocapitalize="characters"></label>
+        <label><input id="nha-nhan" placeholder="Gọi là (VD: Ông nội)" maxlength="30"></label>
+      </div>
+      <button type="button" class="nut" id="nha-them">Xem người nhà</button>
+      <div id="nha-ds" style="display:grid;gap:6px"></div>
+      <div class="bao" id="bao-nha" hidden></div>
+    </section>
+
     <section id="garmin-chua">
       <h2>Kết nối Garmin</h2>
       <p class="nho">Đăng nhập tài khoản Garmin Connect một lần. Mật khẩu chỉ dùng để lấy quyền đọc rồi bỏ đi, Mia không lưu mật khẩu.</p>
@@ -177,7 +202,7 @@
       <div class="bao" id="bao-co" hidden></div>
     </section>
 
-    <p class="nho" style="text-align:center">Nhắn /ngu, /tongket, /thoisu, /xahoi, /tin, /thucdon hoặc /can cho Mia để xem ngay bất cứ lúc nào.</p>
+    <p class="nho" style="text-align:center">Cứ nhắn Mia hỏi tự do (“tuần này mình ngủ đủ không?”) hoặc gửi ảnh bữa ăn để Mia đoán calo. Lệnh nhanh: /ngu, /tongket, /tuan, /thoisu, /xahoi, /tin, /thucdon, /can.</p>
   </div>
 </main>
 
@@ -240,6 +265,7 @@ function veCaiDat() {
   $("goi-khac").hidden = !tuGo;
   veXemTruoc(); veGarmin(); veTuyChon();
   api("can_xem").then(veCan).catch(() => {});
+  api("nha_ds").then(veNha).catch(() => {});
 }
 
 function veGarmin() {
@@ -255,7 +281,7 @@ function chonTrong(nhomId, v) {
 }
 const chonCua = (nhomId) => { const b = document.querySelector(`#${nhomId} .chip[aria-pressed="true"]`); return b ? b.dataset.v : ""; };
 
-["tin-thoi-su", "tin-xa-hoi", "tin-cong-nghe", "thuc-don-bat"].forEach((id) =>
+["tin-thoi-su", "tin-xa-hoi", "tin-cong-nghe", "thoi-tiet", "tong-ket-tuan", "nhac-van-dong", "thuc-don-bat"].forEach((id) =>
   $(id).onclick = () => { datBat(id, !bat(id)); if (id === "thuc-don-bat") veThucDon(); });
 ["gioi-tinh", "an-sang"].forEach((nhom) =>
   document.querySelectorAll(`#${nhom} .chip`).forEach((b) => b.onclick = () => chonTrong(nhom, b.dataset.v)));
@@ -268,6 +294,10 @@ function veThucDon() {
 function veTuyChon() {
   datBat("tin-thoi-su", toi.tin_thoi_su);
   datBat("tin-xa-hoi", toi.tin_xa_hoi);
+  datBat("thoi-tiet", toi.thoi_tiet);
+  datBat("tong-ket-tuan", toi.tong_ket_tuan);
+  datBat("nhac-van-dong", toi.nhac_van_dong);
+  veNoi();
   datBat("tin-cong-nghe", toi.tin_cong_nghe);
   datBat("thuc-don-bat", toi.thuc_don);
   chonTrong("gioi-tinh", toi.gioi_tinh || "");
@@ -277,6 +307,72 @@ function veTuyChon() {
   $("an-uong").value = toi.an_uong || "";
   veThucDon();
 }
+
+// ── Thời tiết: chọn thành phố hoặc vị trí hiện tại ──
+const THANH_PHO = { "Hà Nội": [21.03, 105.85], "TP.HCM": [10.82, 106.63], "Đà Nẵng": [16.05, 108.22], "Hải Phòng": [20.86, 106.68],
+  "Cần Thơ": [10.03, 105.78], "Vinh": [18.68, 105.69], "Huế": [16.46, 107.59], "Nha Trang": [12.24, 109.19],
+  "Đà Lạt": [11.94, 108.44], "Quy Nhơn": [13.78, 109.22], "Vũng Tàu": [10.35, 107.08], "Hạ Long": [20.95, 107.08] };
+let viTriRieng = null;
+function veNoi() {
+  const s = $("noi");
+  const ten = toi.noi || "";
+  const co = Object.keys(THANH_PHO);
+  const them = ten && !co.includes(ten) ? [ten] : [];
+  s.innerHTML = [...them, ...co].map((t) => `<option value="${t}">${t}</option>`).join("");
+  s.value = ten || "Hà Nội";
+  if (them.length) viTriRieng = { ten, vi_do: toi.vi_do, kinh_do: toi.kinh_do };
+  $("khung-noi").hidden = !bat("thoi-tiet");
+}
+function noiChon() {
+  if (!bat("thoi-tiet")) return {};
+  const ten = $("noi").value;
+  if (viTriRieng && viTriRieng.ten === ten) return { noi: ten, vi_do: viTriRieng.vi_do, kinh_do: viTriRieng.kinh_do };
+  const [vd, kd] = THANH_PHO[ten] || THANH_PHO["Hà Nội"];
+  return { noi: ten, vi_do: vd, kinh_do: kd };
+}
+$("thoi-tiet").addEventListener("click", () => { $("khung-noi").hidden = !bat("thoi-tiet"); });
+$("vi-tri").onclick = () => {
+  const xong = (vd, kd) => {
+    viTriRieng = { ten: "Chỗ mình", vi_do: Math.round(vd * 1000) / 1000, kinh_do: Math.round(kd * 1000) / 1000 };
+    const s = $("noi");
+    if (![...s.options].some((o) => o.value === "Chỗ mình")) s.insertAdjacentHTML("afterbegin", `<option value="Chỗ mình">Chỗ mình</option>`);
+    s.value = "Chỗ mình"; bao("bao-luu", "Đã lấy vị trí, bấm Lưu cài đặt nhé.");
+  };
+  const lm = tg && tg.LocationManager;
+  if (lm && lm.init) {
+    lm.init(() => lm.getLocation((loc) => loc ? xong(loc.latitude, loc.longitude) : bao("bao-luu", "Chưa lấy được vị trí, chọn thành phố nhé.", true)));
+  } else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((p) => xong(p.coords.latitude, p.coords.longitude),
+      () => bao("bao-luu", "Chưa lấy được vị trí, chọn thành phố nhé.", true), { timeout: 10000 });
+  } else bao("bao-luu", "Máy này không cho lấy vị trí, chọn thành phố nhé.", true);
+};
+
+// ── Người nhà ──
+function veNha(d) {
+  const ds = $("nha-ds"); ds.innerHTML = "";
+  const dong = (chu, khac, chieu) => {
+    const hang = document.createElement("div"); hang.className = "hang";
+    const s = document.createElement("span"); s.style.flex = "1"; s.textContent = chu;
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = "Bỏ";
+    b.onclick = async () => { try { veNha(await api("nha_bo", { khac, chieu })); } catch (e) { bao("bao-nha", e.message, true); } };
+    hang.append(s, b); ds.appendChild(hang);
+  };
+  (d.dang_xem || []).forEach((x) => dong(`👀 Đang xem: ${x.nhan}`, x.id, "xem"));
+  (d.cho_xem || []).forEach((x) => dong(`🔓 Đang cho xem: ${x.ten}`, x.id, "cho"));
+}
+$("nha-tao").onclick = async () => {
+  try { const d = await api("nha_tao_ma"); bao("nha-ma", `Mã của bạn: ${d.ma} (dùng trong ${d.gio} giờ, một lần). Gửi mã này cho người nhà, họ nhập trong Mia là xem được tin tóm tắt của bạn.`); }
+  catch (e) { bao("bao-nha", e.message, true); }
+};
+$("nha-them").onclick = async () => {
+  const ma = $("nha-nhap-ma").value.trim();
+  if (!ma) return bao("bao-nha", "Nhập mã người nhà gửi cho bạn trước nhé.", true);
+  $("nha-them").disabled = true;
+  try { veNha(await api("nha_nhap", { ma, nhan: $("nha-nhan").value })); $("nha-nhap-ma").value = ""; $("nha-nhan").value = "";
+        bao("bao-nha", "Xong! Từ mai, đúng giờ sáng của bạn, Mia gửi kèm tin người nhà."); }
+  catch (e) { bao("bao-nha", e.message, true); }
+  $("nha-them").disabled = false;
+};
 
 function veCan(d) {
   const ds = d.ds || [];
@@ -330,7 +426,9 @@ $("luu").onclick = async () => {
   try {
     toi = { ...toi, ...(await api("luu", { goi: goiChon, xung: $("xung").value,
       gio_sang: +$("gio-sang").value, gio_toi: +$("gio-toi").value,
-      tin_thoi_su: bat("tin-thoi-su"), tin_xa_hoi: bat("tin-xa-hoi"), tin_cong_nghe: bat("tin-cong-nghe"), thuc_don: bat("thuc-don-bat"),
+      tin_thoi_su: bat("tin-thoi-su"), tin_xa_hoi: bat("tin-xa-hoi"),
+      thoi_tiet: bat("thoi-tiet"), tong_ket_tuan: bat("tong-ket-tuan"), nhac_van_dong: bat("nhac-van-dong"),
+      ...noiChon(), tin_cong_nghe: bat("tin-cong-nghe"), thuc_don: bat("thuc-don-bat"),
       gioi_tinh: chonCua("gioi-tinh"), an_sang: chonCua("an-sang") !== "0",
       cao_cm: $("cao-cm").value || 0, muc_tieu_kg: $("muc-tieu-kg").value || 0, an_uong: $("an-uong").value })) };
     veThucDon();
